@@ -1,0 +1,55 @@
+{
+  "name": "salon-crm-backend",
+  "version": "1.0.0",
+  "description": "Salon CRM Backend — Node.js + Express + MongoDB",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "seed": "node src/config/seed.js",
+    "test": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --runInBand --forceExit",
+    "test:unit": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js tests/unit --runInBand --forceExit",
+    "test:integration": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js tests/integration --runInBand --forceExit",
+    "lint": "eslint src --ext .js"
+  },
+  "dependencies": {
+    "argon2": "^0.41.1",
+    "compression": "^1.7.5",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "express-validator": "^7.2.1",
+    "helmet": "^8.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.9.4",
+    "morgan": "^1.10.0",
+    "twilio": "^5.4.5",
+    "winston": "^3.17.0",
+    "winston-daily-rotate-file": "^5.0.0",
+    "express-mongo-sanitize": "^2.2.0",
+    "hpp": "^0.2.3",
+    "uuid": "^11.0.5"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "supertest": "^7.0.0",
+    "nodemon": "^3.1.9",
+    "@jest/globals": "^29.7.0",
+    "eslint": "^9.20.1"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "transform": {},
+    "testMatch": [
+      "**/tests/**/*.test.js"
+    ],
+    "collectCoverageFrom": [
+      "src/**/*.js"
+    ]
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
