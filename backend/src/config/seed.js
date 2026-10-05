@@ -62,7 +62,7 @@ async function seed() {
       },
       {
         name: 'Hydra-Boost Deep Cleanse Facial',
-        description: 'Multi-step clinical facial for deep hydration, blackhead clearing, and brightening.',
+        description: 'Multi-step luxury spa facial for deep hydration, blackhead clearing, and brightening.',
         category: SERVICE_CATEGORY.SKIN,
         duration: 50,
         bufferTime: 10,

@@ -12,6 +12,8 @@ const lineItemSchema = new Schema(
     taxAmount: { type: Number, required: true },
     discountAmount: { type: Number, default: 0 },
     total: { type: Number, required: true },
+    staff: { type: Schema.Types.ObjectId, ref: 'Staff', default: null },
+    staffName: { type: String, default: '' },
   },
   { _id: false }
 );
@@ -25,6 +27,8 @@ const paymentSchema = new Schema(
       required: true,
     },
     referenceNumber: String,
+    cashTendered: Number,
+    changeReturned: Number,
     paidAt: { type: Date, default: Date.now },
     notes: String,
   },
@@ -46,7 +50,8 @@ const invoiceSchema = new Schema(
     appointment: {
       type: Schema.Types.ObjectId,
       ref: 'Appointment',
-      required: true,
+      default: null,
+      required: false,
     },
     lineItems: [lineItemSchema],
     subtotal: { type: Number, required: true },
@@ -62,6 +67,7 @@ const invoiceSchema = new Schema(
     },
     payments: [paymentSchema],
     notes: { type: String, maxlength: 500 },
+    isPosSale: { type: Boolean, default: false },
     issuedAt: Date,
     dueDate: Date,
   },
@@ -69,7 +75,7 @@ const invoiceSchema = new Schema(
 );
 
 invoiceSchema.index({ customer: 1, createdAt: -1 });
-invoiceSchema.index({ appointment: 1 }, { unique: true });
+invoiceSchema.index({ appointment: 1 }, { unique: true, sparse: true });
 invoiceSchema.index({ status: 1 });
 invoiceSchema.index({ issuedAt: -1 });
 

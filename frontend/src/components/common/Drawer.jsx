@@ -8,10 +8,12 @@ export function Drawer({
   subtitle,
   children,
   width = 'max-w-md',
+  closeOnBackdropClick = false,
+  closeOnEscape = false,
 }) {
   useEffect(() => {
     function handleKeyDown(e) {
-      if (e.key === 'Escape' && isOpen) onClose();
+      if (closeOnEscape && e.key === 'Escape' && isOpen) onClose();
     }
     if (isOpen) {
       document.body.style.overflow = 'hidden';
@@ -23,7 +25,7 @@ export function Drawer({
       document.body.style.overflow = 'unset';
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, closeOnEscape]);
 
   if (!isOpen) return null;
 
@@ -32,7 +34,7 @@ export function Drawer({
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-stone-900/40 backdrop-blur-sm transition-opacity"
-        onClick={onClose}
+        onClick={closeOnBackdropClick ? onClose : undefined}
       />
 
       <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
@@ -42,7 +44,7 @@ export function Drawer({
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-5 border-b border-stone-100">
             <div>
-              {title && <h3 className="text-lg font-serif font-bold text-stone-900">{title}</h3>}
+              {title && <h3 className="text-lg font-display font-bold text-stone-900">{title}</h3>}
               {subtitle && <p className="text-xs text-stone-500 mt-0.5">{subtitle}</p>}
             </div>
             <button

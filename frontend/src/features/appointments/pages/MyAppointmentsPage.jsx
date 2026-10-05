@@ -71,10 +71,24 @@ export function MyAppointmentsPage() {
     }
     loadAppointments();
 
-    // Auto-poll every 5 seconds so status transitions (e.g. Accepted) reflect live
+    // Live cross-tab and real-time synchronization
+    let channel = null;
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        channel = new BroadcastChannel('salon_appointment_sync');
+        channel.onmessage = () => loadAppointments(true);
+      }
+    } catch (e) {}
+
+    const handleStorage = (e) => {
+      if (e.key === 'salon_last_booking_event') loadAppointments(true);
+    };
+    window.addEventListener('storage', handleStorage);
+
+    // Auto-poll every 4 seconds so status transitions (e.g. Accepted) reflect live
     const interval = setInterval(() => {
       loadAppointments(true);
-    }, 5000);
+    }, 4000);
 
     // Also auto-refresh when customer switches back to this browser tab
     const handleFocus = () => loadAppointments(true);
@@ -85,6 +99,8 @@ export function MyAppointmentsPage() {
     window.addEventListener('new-appointment-notification', handleNotification);
 
     return () => {
+      if (channel) channel.close();
+      window.removeEventListener('storage', handleStorage);
       clearInterval(interval);
       window.removeEventListener('focus', handleFocus);
       window.removeEventListener('new-appointment-notification', handleNotification);
@@ -154,7 +170,7 @@ export function MyAppointmentsPage() {
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-serif font-bold text-stone-900 tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-display font-extrabold text-stone-900 tracking-tight">
             My Appointments
           </h1>
           <p className="text-xs text-stone-500 mt-1">
@@ -214,7 +230,7 @@ export function MyAppointmentsPage() {
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 pb-4 border-b border-stone-100">
                   <div>
                     <div className="flex items-center gap-3 mb-1.5">
-                      <h3 className="text-lg font-serif font-bold text-stone-900">
+                      <h3 className="text-lg font-display font-bold text-stone-900">
                         {apt.service?.name}
                       </h3>
                       <StatusBadge status={apt.status} />
@@ -288,7 +304,7 @@ export function MyAppointmentsPage() {
 
                   <div>
                     <span className="text-stone-400 block font-medium">Amount</span>
-                    <span className="font-serif font-bold text-stone-900 mt-1 block tabular-nums">
+                    <span className="font-sans font-bold text-stone-900 mt-1 block tabular-nums">
                       {apt.billingSnapshot?.totalAmount
                         ? formatCurrency(apt.billingSnapshot.totalAmount)
                         : apt.service?.price

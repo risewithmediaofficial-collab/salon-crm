@@ -16,11 +16,10 @@ import {
   LogOut,
   Menu,
   X,
-  Shield,
-  Tag,
   ChevronRight,
 } from 'lucide-react';
 import config from '../../config/index.js';
+import ErrorBoundary from '../common/ErrorBoundary.jsx';
 
 export function CustomerLayout() {
   const location = useLocation();
@@ -58,14 +57,15 @@ export function CustomerLayout() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [mobileMenuOpen]);
 
-  const isStaffOrAdmin = role && ['OWNER', 'MANAGER', 'STAFF'].includes(role);
+  // Only authenticated CUSTOMER accounts are surfaced on the customer website to keep staff/admin data completely separated
+  const isCustomer = Boolean(user && role === 'CUSTOMER');
 
   const navLinks = [
     { label: 'Home', path: '/' },
     { label: 'Services', path: '/services' },
     { label: 'Our Stylists', path: '/staff' },
     { label: 'Offers', path: '/offers' },
-    ...(user && role === 'CUSTOMER' ? [{ label: 'My Appointments', path: '/my-appointments' }] : []),
+    ...(isCustomer ? [{ label: 'My Appointments', path: '/my-appointments' }] : []),
   ];
 
   return (
@@ -105,7 +105,7 @@ export function CustomerLayout() {
               <Sparkles className="w-5 h-5 text-gold-400 group-hover:rotate-12 transition-transform duration-300" />
             </div>
             <div className="flex flex-col">
-              <span className="font-serif font-bold text-lg text-stone-900 tracking-tight leading-tight group-hover:text-salon-800 transition-colors">
+              <span className="font-display font-bold text-lg text-stone-900 tracking-tight leading-tight group-hover:text-salon-800 transition-colors">
                 {config.SALON_NAME}
               </span>
               <span className="text-[10px] tracking-widest text-salon-600 font-semibold uppercase">
@@ -136,21 +136,13 @@ export function CustomerLayout() {
 
           {/* Right Action buttons */}
           <div className="hidden md:flex items-center gap-3">
-            {isStaffOrAdmin && (
-              <Link to="/admin">
-                <Button variant="outline" size="sm" icon={Shield} className="border-salon-300 text-salon-800 hover:bg-salon-50 text-xs py-2">
-                  Staff Portal
-                </Button>
-              </Link>
-            )}
-
-            {user ? (
+            {isCustomer ? (
               <div className="flex items-center gap-2">
                 <NotificationBell />
 
                 <div className="flex items-center gap-2 bg-stone-100/90 pl-1.5 pr-2 py-1 rounded-full border border-stone-200/80">
                   <Link to="/profile" className="flex items-center gap-2 text-xs font-semibold text-stone-800 hover:text-salon-800">
-                    <div className="w-7 h-7 rounded-full bg-salon-800 text-white flex items-center justify-center font-serif text-xs font-bold shadow-xs">
+                    <div className="w-7 h-7 rounded-full bg-salon-800 text-white flex items-center justify-center font-display text-xs font-bold shadow-xs">
                       {user.name ? user.name[0].toUpperCase() : 'U'}
                     </div>
                     <span className="max-w-[110px] truncate">{user.name || 'Account'}</span>
@@ -192,7 +184,7 @@ export function CustomerLayout() {
 
           {/* Mobile hamburger */}
           <div className="flex items-center gap-2 md:hidden">
-            {user && <NotificationBell />}
+            {isCustomer && <NotificationBell />}
             <Link to="/book">
               <Button variant="primary" size="sm" className="px-3 py-1.5 text-xs font-semibold">
                 Book
@@ -232,14 +224,14 @@ export function CustomerLayout() {
             </div>
 
             <div className="pt-4 border-t border-stone-200/70 flex flex-col gap-3">
-              {user ? (
+              {isCustomer ? (
                 <>
                   <Link
                     to="/profile"
                     onClick={() => setMobileMenuOpen(false)}
                     className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-stone-100/90 text-sm font-semibold text-stone-800 hover:bg-stone-200/80 transition-colors"
                   >
-                    <div className="w-8 h-8 rounded-full bg-salon-800 text-white flex items-center justify-center font-serif text-xs font-bold">
+                    <div className="w-8 h-8 rounded-full bg-salon-800 text-white flex items-center justify-center font-display text-xs font-bold">
                       {user.name ? user.name[0].toUpperCase() : 'U'}
                     </div>
                     <span>My Profile ({user.name || user.phone})</span>
@@ -269,14 +261,6 @@ export function CustomerLayout() {
                   Sign In (OTP)
                 </Button>
               )}
-
-              {isStaffOrAdmin && (
-                <Link to="/admin" onClick={() => setMobileMenuOpen(false)}>
-                  <Button variant="outline" size="md" icon={Shield} className="w-full py-3 text-sm">
-                    Open Staff Admin Portal
-                  </Button>
-                </Link>
-              )}
             </div>
           </div>
         )}
@@ -293,7 +277,9 @@ export function CustomerLayout() {
 
       {/* Main Content Area */}
       <main className="flex-1">
-        <Outlet />
+        <ErrorBoundary>
+          <Outlet />
+        </ErrorBoundary>
       </main>
 
       {/* Footer */}
@@ -306,7 +292,7 @@ export function CustomerLayout() {
                 <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-salon-700 to-salon-900 text-white flex items-center justify-center border border-salon-600/50">
                   <Sparkles className="w-4 h-4 text-gold-400" />
                 </div>
-                <h4 className="text-lg font-serif font-bold text-white tracking-tight">
+                <h4 className="text-lg font-display font-bold text-white tracking-tight">
                   {config.SALON_NAME}
                 </h4>
               </div>
@@ -369,11 +355,6 @@ export function CustomerLayout() {
 
           <div className="pt-8 border-t border-stone-800 text-xs text-stone-500 flex flex-col sm:flex-row items-center justify-between gap-4">
             <p>© {new Date().getFullYear()} {config.SALON_NAME}. All rights reserved.</p>
-            <div className="flex items-center gap-4">
-              <Link to="/staff-login" className="hover:text-stone-300 transition-colors">
-                Staff / Admin Access
-              </Link>
-            </div>
           </div>
         </div>
       </footer>

@@ -54,7 +54,7 @@ export function OffersPage() {
         <span className="text-xs font-semibold uppercase tracking-widest text-gold-700 bg-gold-50 px-3 py-1 rounded-full border border-gold-200">
           Exclusive Promos
         </span>
-        <h1 className="text-3xl sm:text-4xl font-serif font-bold text-stone-900 mt-3 mb-3">
+        <h1 className="text-3xl sm:text-4xl font-display font-extrabold text-stone-900 tracking-tight mt-3 mb-3">
           Special Offers & Packages
         </h1>
         <p className="text-sm text-stone-500 leading-relaxed">
@@ -97,7 +97,7 @@ export function OffersPage() {
                     <span className="text-xs font-bold text-gold-700 uppercase tracking-wider block mb-1">
                       {discountLabel}
                     </span>
-                    <h3 className="text-lg font-serif font-bold text-stone-900">{offer.title}</h3>
+                    <h3 className="text-lg font-display font-bold text-stone-900">{offer.title}</h3>
                   </div>
                   <div className="w-10 h-10 rounded-2xl bg-gold-100/80 text-gold-700 flex items-center justify-center shrink-0">
                     <Sparkles className="w-5 h-5" />

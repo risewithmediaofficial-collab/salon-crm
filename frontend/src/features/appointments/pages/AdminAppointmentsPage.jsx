@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import appointmentService from '../appointmentService.js';
 import useUIStore from '../../../store/uiStore.js';
 import Card from '../../../components/common/Card.jsx';
@@ -22,6 +22,8 @@ import {
   UserCheck,
   Ban,
   Filter,
+  Sparkles,
+  Bell,
 } from 'lucide-react';
 import {
   formatCurrency,
@@ -45,21 +47,48 @@ export function AdminAppointmentsPage() {
   // Status change action
   const [actionConfirm, setActionConfirm] = useState(null); // { appointmentId, newStatus, title, message }
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  // Live new appointment arrival alert banner
+  const [liveBanner, setLiveBanner] = useState(null);
+  const knownAptIdsRef = useRef(new Set());
 
-  const loadAppointments = async (page = 1) => {
-    setIsLoading(true);
+  const loadAppointments = async (page = 1, options = {}) => {
+    const isSilent = Boolean(options.silent);
+    if (!isSilent) setIsLoading(true);
     try {
       const params = { page, limit: 15 };
       if (selectedStatus !== 'ALL') params.status = selectedStatus;
       if (dateFilter) params.date = dateFilter;
 
       const res = await appointmentService.getAll(params);
-      setAppointments(res.data || []);
+      const incoming = res.data || [];
+
+      // Detect new appointments arriving in real-time
+      if (knownAptIdsRef.current.size > 0 && incoming.length > 0) {
+        const newlyArrived = incoming.filter((apt) => !knownAptIdsRef.current.has(apt._id));
+        if (newlyArrived.length > 0) {
+          const latest = newlyArrived[0];
+          setLiveBanner({
+            title: '✨ New Online Appointment Received!',
+            message: `${latest.customer?.name || 'A customer'} booked ${latest.service?.name || 'service'} with ${latest.staff?.name || 'stylist'}.`,
+            appointmentId: latest._id,
+          });
+
+          showToast({
+            type: 'info',
+            title: '🔔 New Appointment Received',
+            message: `${latest.customer?.name || 'A customer'} booked ${latest.service?.name || 'service'}. List updated live.`,
+            duration: 8000,
+          });
+        }
+      }
+
+      incoming.forEach((apt) => knownAptIdsRef.current.add(apt._id));
+      setAppointments(incoming);
       if (res.pagination) setPagination(res.pagination);
     } catch (err) {
       console.error('Failed to load appointments:', err);
     } finally {
-      setIsLoading(false);
+      if (!isSilent) setIsLoading(false);
     }
   };
 
@@ -67,14 +96,57 @@ export function AdminAppointmentsPage() {
     loadAppointments(1);
   }, [selectedStatus, dateFilter]);
 
-  // Real-time auto-reload when a new appointment notification arrives
+  // Real-time live synchronization: BroadcastChannel, storage event, window event, visibility change, and 4s silent background polling
   useEffect(() => {
-    const handleNewAppointment = () => {
-      loadAppointments(1);
+    const triggerSilentSync = () => {
+      loadAppointments(pagination.page || 1, { silent: true });
     };
-    window.addEventListener('new-appointment-notification', handleNewAppointment);
-    return () => window.removeEventListener('new-appointment-notification', handleNewAppointment);
-  }, [selectedStatus, dateFilter]);
+
+    // 1. Cross-tab BroadcastChannel
+    let channel = null;
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        channel = new BroadcastChannel('salon_appointment_sync');
+        channel.onmessage = () => {
+          triggerSilentSync();
+        };
+      }
+    } catch (err) {}
+
+    // 2. Storage event fallback for cross-tab sync
+    const handleStorageEvent = (e) => {
+      if (e.key === 'salon_last_booking_event') {
+        triggerSilentSync();
+      }
+    };
+    window.addEventListener('storage', handleStorageEvent);
+
+    // 3. Same-window custom event
+    window.addEventListener('new-appointment-notification', triggerSilentSync);
+
+    // 4. Tab visibility change & window focus (instant sync when admin returns to tab)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        triggerSilentSync();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', triggerSilentSync);
+
+    // 5. Silent background polling every 4 seconds to guarantee updates from other browsers/devices
+    const pollTimer = setInterval(() => {
+      triggerSilentSync();
+    }, 4000);
+
+    return () => {
+      if (channel) channel.close();
+      window.removeEventListener('storage', handleStorageEvent);
+      window.removeEventListener('new-appointment-notification', triggerSilentSync);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', triggerSilentSync);
+      clearInterval(pollTimer);
+    };
+  }, [selectedStatus, dateFilter, pagination.page]);
 
   const handleStatusTransition = async () => {
     if (!actionConfirm) return;
@@ -194,6 +266,35 @@ export function AdminAppointmentsPage() {
         ))}
       </div>
 
+      {/* Live New Appointment Arrival Alert */}
+      {liveBanner && (
+        <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-salon-500/10 border border-amber-300 shadow-sm flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="w-9 h-9 rounded-xl bg-amber-600 text-white flex items-center justify-center shrink-0 shadow-xs animate-pulse">
+              <Sparkles className="w-5 h-5 text-amber-200" />
+            </span>
+            <div className="min-w-0">
+              <h4 className="text-xs font-bold text-amber-950 flex items-center gap-2">
+                <span>{liveBanner.title}</span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-200/80 text-amber-800 uppercase tracking-wider">
+                  Live Sync
+                </span>
+              </h4>
+              <p className="text-xs text-amber-800 truncate mt-0.5">
+                {liveBanner.message}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setLiveBanner(null)}
+            className="text-amber-700 hover:text-amber-950 p-1.5 rounded-lg hover:bg-amber-100 transition-colors shrink-0 text-xs font-semibold"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {/* Appointments List */}
       {isLoading ? (
         <div className="space-y-3">
@@ -243,7 +344,9 @@ export function AdminAppointmentsPage() {
                       </div>
 
                       <div className="flex items-center gap-3 text-xs text-stone-600">
-                        <span className="font-semibold text-salon-800">{apt.service?.name}</span>
+                        <span className="font-semibold text-salon-800">
+                          {[apt.service?.name, ...(apt.additionalServices || []).map((s) => s.name)].filter(Boolean).join(' + ')}
+                        </span>
                         <span>&bull;</span>
                         <span className="flex items-center gap-1 text-stone-500">
                           <User className="w-3.5 h-3.5" />
@@ -418,7 +521,9 @@ export function AdminAppointmentsPage() {
             <div className="space-y-3">
               <div className="flex justify-between py-2 border-b border-stone-100">
                 <span className="text-stone-400 font-medium">Treatment</span>
-                <span className="font-bold text-stone-900">{activeAppointment.service?.name}</span>
+                <span className="font-bold text-stone-900 text-right max-w-[220px]">
+                  {[activeAppointment.service?.name, ...(activeAppointment.additionalServices || []).map((s) => s.name)].filter(Boolean).join(' + ')}
+                </span>
               </div>
               <div className="flex justify-between py-2 border-b border-stone-100">
                 <span className="text-stone-400 font-medium">Specialist</span>

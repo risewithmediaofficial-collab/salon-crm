@@ -5,12 +5,13 @@ import { successResponse, createdResponse } from '../utils/apiResponse.js';
 export async function create(req, res, next) {
   try {
     const customerId = req.user.role === 'CUSTOMER' ? req.user.id : req.body.customerId;
-    const { staffId, serviceId, appointmentDate, startTime, notes, offerCode } = req.body;
+    const { staffId, serviceId, serviceIds, appointmentDate, startTime, notes, offerCode } = req.body;
 
     const appointment = await appointmentService.createAppointment({
       customerId,
       staffId,
       serviceId,
+      serviceIds,
       appointmentDate,
       startTimeStr: startTime,
       notes,
@@ -94,10 +95,11 @@ export async function cancel(req, res, next) {
 
 export async function getSlots(req, res, next) {
   try {
-    const { staffId, serviceId, date, slotInterval } = req.query;
+    const { staffId, serviceId, serviceIds, date, slotInterval } = req.query;
     const slots = await availabilityService.getAvailableSlots({
       staffId,
       serviceId,
+      serviceIds,
       date,
       slotInterval: slotInterval ? parseInt(slotInterval, 10) : 15,
     });

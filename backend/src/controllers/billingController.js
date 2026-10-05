@@ -79,3 +79,20 @@ export async function validateOffer(req, res, next) {
     next(err);
   }
 }
+
+export async function createPos(req, res, next) {
+  try {
+    const invoice = await billingService.createPosInvoice({
+      ...req.body,
+      cashierId: req.user.id,
+    });
+
+    return successResponse(res, {
+      message: 'POS bill generated and recorded successfully',
+      data: invoice,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+

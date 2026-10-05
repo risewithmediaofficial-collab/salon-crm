@@ -8,6 +8,8 @@ import LoadingSpinner from '../components/common/LoadingSpinner.jsx';
 import HomePage from '../features/home/HomePage.jsx';
 import BookingWizardPage from '../features/appointments/pages/BookingWizardPage.jsx';
 import StaffLoginPage from '../features/auth/pages/StaffLoginPage.jsx';
+import RouteErrorPage from '../components/common/RouteErrorPage.jsx';
+import NotFoundPage from '../components/common/NotFoundPage.jsx';
 
 // Lazy loading for large modules (Section 21)
 const ServicesPage = lazy(() => import('../features/services/pages/ServicesPage.jsx'));
@@ -24,6 +26,7 @@ const AdminCustomersPage = lazy(() => import('../features/customers/pages/AdminC
 const AdminServicesPage = lazy(() => import('../features/services/pages/AdminServicesPage.jsx'));
 const AdminStaffPage = lazy(() => import('../features/staff/pages/AdminStaffPage.jsx'));
 const AdminBillingPage = lazy(() => import('../features/billing/pages/AdminBillingPage.jsx'));
+const AdminPosPage = lazy(() => import('../features/billing/pages/AdminPosPage.jsx'));
 const AdminOffersPage = lazy(() => import('../features/offers/pages/AdminOffersPage.jsx'));
 const AdminReportsPage = lazy(() => import('../features/reports/pages/AdminReportsPage.jsx'));
 const AdminAuditPage = lazy(() => import('../features/audit/pages/AdminAuditPage.jsx'));
@@ -42,6 +45,7 @@ export const router = createBrowserRouter([
   {
     path: '/',
     element: <CustomerLayout />,
+    errorElement: <RouteErrorPage />,
     children: [
       { index: true, element: <HomePage /> },
       {
@@ -91,16 +95,28 @@ export const router = createBrowserRouter([
     ],
   },
 
-  // Staff Login
+  // Staff Login (supports /staff-login, /staff/login, and /login)
   {
     path: '/staff-login',
     element: <StaffLoginPage />,
+    errorElement: <RouteErrorPage />,
+  },
+  {
+    path: '/staff/login',
+    element: <StaffLoginPage />,
+    errorElement: <RouteErrorPage />,
+  },
+  {
+    path: '/login',
+    element: <StaffLoginPage />,
+    errorElement: <RouteErrorPage />,
   },
 
   // Salon Admin Portal
   {
     path: '/admin',
     element: <AdminLayout />,
+    errorElement: <RouteErrorPage />,
     children: [
       {
         index: true,
@@ -159,6 +175,14 @@ export const router = createBrowserRouter([
         ),
       },
       {
+        path: 'pos',
+        element: (
+          <Suspense fallback={<SuspenseFallback />}>
+            <AdminPosPage />
+          </Suspense>
+        ),
+      },
+      {
         path: 'offers',
         element: (
           <Suspense fallback={<SuspenseFallback />}>
@@ -183,6 +207,13 @@ export const router = createBrowserRouter([
         ),
       },
     ],
+  },
+
+  // Global 404 Catch-All Route
+  {
+    path: '*',
+    element: <NotFoundPage />,
+    errorElement: <RouteErrorPage />,
   },
 ]);
 

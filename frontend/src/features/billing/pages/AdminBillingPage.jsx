@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import billingService from '../billingService.js';
 import useUIStore from '../../../store/uiStore.js';
 import Card from '../../../components/common/Card.jsx';
@@ -10,7 +11,7 @@ import Select from '../../../components/common/Select.jsx';
 import Pagination from '../../../components/common/Pagination.jsx';
 import Skeleton from '../../../components/common/Skeleton.jsx';
 import EmptyState from '../../../components/common/EmptyState.jsx';
-import { Receipt, IndianRupee, CheckCircle2, AlertCircle, Eye, CreditCard } from 'lucide-react';
+import { Receipt, IndianRupee, CheckCircle2, AlertCircle, Eye, CreditCard, ShoppingBag } from 'lucide-react';
 import { formatCurrency } from '../../../../../shared/utils/index.js';
 import { PAYMENT_METHOD, INVOICE_STATUS_COLORS } from '../../../constants/index.js';
 
@@ -100,7 +101,7 @@ export function AdminBillingPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <Select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
@@ -113,6 +114,12 @@ export function AdminBillingPage() {
             ]}
             containerClassName="w-44"
           />
+
+          <Link to="/admin/pos">
+            <Button variant="primary" icon={ShoppingBag}>
+              Open POS Terminal
+            </Button>
+          </Link>
         </div>
       </div>
 
@@ -354,6 +361,12 @@ export function AdminBillingPage() {
                 </div>
               </div>
             )}
+
+            <div className="flex justify-end pt-4 border-t border-stone-100">
+              <Button variant="secondary" size="sm" onClick={() => setReceiptInvoice(null)}>
+                Close
+              </Button>
+            </div>
           </div>
         )}
       </Modal>

@@ -19,6 +19,7 @@ router.get('/', billingController.getAll);
 router.get('/:id', billingController.getById);
 
 // Staff billing operations
+router.post('/pos', salonStaff, billingController.createPos);
 router.post('/:id/pay', salonStaff, recordPaymentValidator, validate, billingController.pay);
 router.post('/:id/issue', salonStaff, billingController.issue);
 

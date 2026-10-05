@@ -18,7 +18,7 @@ export function EmptyState({
         <Icon className="w-6 h-6" />
       </div>
 
-      <h3 className="text-base font-serif font-bold text-stone-900 mb-1">{title}</h3>
+      <h3 className="text-base font-display font-bold text-stone-900 mb-1">{title}</h3>
       <p className="text-xs text-stone-500 max-w-sm mb-5">{description}</p>
 
       {actionLabel && onAction && (

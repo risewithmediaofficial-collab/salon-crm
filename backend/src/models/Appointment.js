@@ -15,6 +15,14 @@ const billingSnapshotSchema = new Schema(
     taxAmount: { type: Number, required: true },
     discountAmount: { type: Number, default: 0 },
     totalAmount: { type: Number, required: true },
+    services: [
+      {
+        serviceId: { type: Schema.Types.ObjectId, ref: 'Service' },
+        name: { type: String },
+        price: { type: Number },
+        duration: { type: Number },
+      },
+    ],
   },
   { _id: false }
 );
@@ -36,6 +44,12 @@ const appointmentSchema = new Schema(
       ref: 'Service',
       required: true,
     },
+    additionalServices: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: 'Service',
+      },
+    ],
     // Date stored as UTC midnight for the appointment date
     appointmentDate: {
       type: Date,

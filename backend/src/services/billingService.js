@@ -8,6 +8,7 @@
 import Invoice from '../models/Invoice.js';
 import Service from '../models/Service.js';
 import Offer from '../models/Offer.js';
+import Customer from '../models/Customer.js';
 import { INVOICE_STATUS, PAYMENT_METHOD, OFFER_TYPE, TAX_RATE } from '../constants/index.js';
 import { AppError, NotFoundError } from '../utils/errors.js';
 import logger from '../utils/logger.js';
@@ -123,31 +124,43 @@ export async function validateOffer(offerCode, serviceId, subtotal) {
  * @param {string} params.customerId
  * @returns {Promise<object>} Invoice document
  */
-export async function createDraftInvoice({ appointment, service, offer, customerId }) {
-  const billing = computeBilling(service, offer);
+export async function createDraftInvoice({ appointment, service, services, offer, customerId, discountAmount }) {
+  const serviceList = services && services.length > 0 ? services : [service];
+  const subtotal = serviceList.reduce((sum, s) => sum + s.price, 0);
+  const discount = discountAmount !== undefined ? discountAmount : (offer ? computeDiscount(offer, subtotal) : 0);
+  const taxRate = serviceList[0]?.taxRate || 18;
+  const taxable = Math.max(0, subtotal - discount);
+  const totalTax = Math.round((taxable * (taxRate / 100)) * 100) / 100;
+  const totalAmount = Math.round((taxable + totalTax) * 100) / 100;
+
   const invoiceNumber = await generateInvoiceNumber();
+
+  const lineItems = serviceList.map((s, idx) => {
+    const itemDiscount = idx === 0 ? discount : 0;
+    const itemTaxable = Math.max(0, s.price - itemDiscount);
+    const itemTax = Math.round((itemTaxable * (taxRate / 100)) * 100) / 100;
+    return {
+      description: s.name,
+      quantity: 1,
+      unitPrice: s.price,
+      taxRate,
+      taxAmount: itemTax,
+      discountAmount: itemDiscount,
+      total: Math.round((itemTaxable + itemTax) * 100) / 100,
+    };
+  });
 
   const invoice = await Invoice.create({
     invoiceNumber,
     customer: customerId,
     appointment: appointment._id,
-    lineItems: [
-      {
-        description: service.name,
-        quantity: 1,
-        unitPrice: service.price,
-        taxRate: billing.taxRate,
-        taxAmount: billing.taxAmount,
-        discountAmount: billing.discountAmount,
-        total: billing.totalAmount,
-      },
-    ],
-    subtotal: billing.subtotal,
-    totalTax: billing.taxAmount,
-    totalDiscount: billing.discountAmount,
-    totalAmount: billing.totalAmount,
+    lineItems,
+    subtotal,
+    totalTax,
+    totalDiscount: discount,
+    totalAmount,
     amountPaid: 0,
-    amountDue: billing.totalAmount,
+    amountDue: totalAmount,
     status: INVOICE_STATUS.DRAFT,
   });
 
@@ -280,5 +293,160 @@ export async function getInvoiceById(id, { userRole, userId }) {
   }
 
   return invoice;
+}
+
+/**
+ * Create a direct POS (Point of Sale) invoice for on-the-spot services / walk-ins.
+ */
+export async function createPosInvoice({
+  customerId,
+  customerName,
+  customerPhone,
+  items = [],
+  offerCode,
+  discountAmount = 0,
+  payment,
+  notes,
+}) {
+  if (!items || items.length === 0) {
+    throw new AppError('POS bill must contain at least one service or item', 400, 'NO_ITEMS');
+  }
+
+  // 1. Resolve or create customer
+  let customer = null;
+  if (customerId) {
+    customer = await Customer.findById(customerId);
+  } else if (customerPhone) {
+    const cleanPhone = String(customerPhone).replace(/\D/g, '').slice(-10);
+    customer = await Customer.findOne({ phone: cleanPhone });
+    if (!customer) {
+      customer = await Customer.create({
+        name: customerName?.trim() || 'Walk-in Client',
+        phone: cleanPhone,
+        registeredVia: 'ADMIN',
+      });
+    }
+  }
+
+  if (!customer) {
+    customer = await Customer.findOne({ phone: '9999999999' });
+    if (!customer) {
+      customer = await Customer.create({
+        name: customerName?.trim() || 'Walk-in Client',
+        phone: '9999999999',
+        registeredVia: 'ADMIN',
+      });
+    }
+  }
+
+  // 2. Compute item totals & subtotal
+  const subtotal = items.reduce(
+    (sum, item) => sum + (Number(item.unitPrice) || 0) * (Number(item.quantity) || 1),
+    0
+  );
+
+  let effectiveDiscount = Number(discountAmount) || 0;
+  let offer = null;
+  if (offerCode) {
+    offer = await validateOffer(offerCode, null, subtotal);
+    if (offer) {
+      if (offer.type === OFFER_TYPE.PERCENTAGE) {
+        const raw = subtotal * (offer.value / 100);
+        effectiveDiscount = offer.maxDiscountAmount ? Math.min(raw, offer.maxDiscountAmount) : raw;
+      } else if (offer.type === OFFER_TYPE.FLAT) {
+        effectiveDiscount = Math.min(offer.value, subtotal);
+      }
+    }
+  }
+  effectiveDiscount = Math.min(effectiveDiscount, subtotal);
+
+  let totalTax = 0;
+  const lineItems = items.map((item) => {
+    const qty = Math.max(1, Number(item.quantity) || 1);
+    const unitPrice = Math.max(0, Number(item.unitPrice) || 0);
+    const itemSubtotal = unitPrice * qty;
+    const itemDiscount = subtotal > 0 ? Math.round((itemSubtotal / subtotal) * effectiveDiscount * 100) / 100 : 0;
+    const taxable = Math.max(0, itemSubtotal - itemDiscount);
+    const taxRate = item.taxRate !== undefined ? Number(item.taxRate) : 18;
+    const itemTax = Math.round((taxable * (taxRate / 100)) * 100) / 100;
+    totalTax += itemTax;
+    const itemTotal = Math.round((taxable + itemTax) * 100) / 100;
+
+    return {
+      description: item.description,
+      quantity: qty,
+      unitPrice,
+      taxRate,
+      taxAmount: itemTax,
+      discountAmount: itemDiscount,
+      total: itemTotal,
+      staff: item.staffId || null,
+      staffName: item.staffName || '',
+    };
+  });
+
+  totalTax = Math.round(totalTax * 100) / 100;
+  const taxableAmount = Math.max(0, subtotal - effectiveDiscount);
+  const totalAmount = Math.round((taxableAmount + totalTax) * 100) / 100;
+
+  const invoiceNumber = await generateInvoiceNumber();
+
+  // 3. Process Payment
+  const paymentsList = [];
+  let amountPaid = 0;
+  if (payment && Number(payment.amount) > 0) {
+    const payAmount = Math.min(Number(payment.amount), totalAmount);
+    paymentsList.push({
+      amount: payAmount,
+      method: payment.method || PAYMENT_METHOD.CASH,
+      referenceNumber: payment.referenceNumber || '',
+      cashTendered: Number(payment.cashTendered) || undefined,
+      changeReturned: Number(payment.changeReturned) || undefined,
+      notes: payment.notes || (payment.cashTendered ? `Tendered: ₹${payment.cashTendered}, Change: ₹${payment.changeReturned || 0}` : ''),
+      paidAt: new Date(),
+    });
+    amountPaid = payAmount;
+  }
+
+  const amountDue = Math.max(0, Math.round((totalAmount - amountPaid) * 100) / 100);
+  const status = amountDue === 0 ? INVOICE_STATUS.PAID : amountPaid > 0 ? INVOICE_STATUS.PARTIALLY_PAID : INVOICE_STATUS.ISSUED;
+
+  const invoice = await Invoice.create({
+    invoiceNumber,
+    customer: customer._id,
+    appointment: null,
+    isPosSale: true,
+    lineItems,
+    subtotal,
+    totalTax,
+    totalDiscount: effectiveDiscount,
+    totalAmount,
+    amountPaid,
+    amountDue,
+    status,
+    payments: paymentsList,
+    notes: notes || undefined,
+    issuedAt: new Date(),
+  });
+
+  // 4. Update Customer stats
+  await Customer.findByIdAndUpdate(customer._id, {
+    $inc: {
+      totalVisits: 1,
+      totalSpent: totalAmount,
+    },
+    $set: {
+      lastVisit: new Date(),
+    },
+  });
+
+  if (offer) {
+    await Offer.findByIdAndUpdate(offer._id, { $inc: { usageCount: 1 } });
+  }
+
+  // 5. Populate customer for receipt display
+  return Invoice.findById(invoice._id)
+    .populate('customer', 'name phone email')
+    .lean();
 }
 

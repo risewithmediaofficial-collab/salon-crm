@@ -40,7 +40,7 @@ export function StaffPage() {
         <span className="text-xs font-semibold uppercase tracking-widest text-salon-700 bg-salon-50 px-3 py-1 rounded-full border border-salon-200">
           Our Artisans
         </span>
-        <h1 className="text-3xl sm:text-4xl font-serif font-bold text-stone-900 mt-3 mb-3">
+        <h1 className="text-3xl sm:text-4xl font-display font-extrabold text-stone-900 tracking-tight mt-3 mb-3">
           Meet Our Master Specialists
         </h1>
         <p className="text-sm text-stone-500 leading-relaxed">
@@ -87,7 +87,7 @@ export function StaffPage() {
                     className="group-hover:scale-105 transition-transform"
                   />
                   <div>
-                    <h3 className="text-base font-serif font-bold text-stone-900 group-hover:text-salon-800 transition-colors">
+                    <h3 className="text-base font-display font-bold text-stone-900 group-hover:text-salon-800 transition-colors">
                       {stylist.name}
                     </h3>
                     <div className="flex items-center gap-1.5 text-xs text-salon-600 font-medium mt-0.5">

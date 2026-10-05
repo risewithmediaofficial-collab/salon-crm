@@ -5,6 +5,17 @@
 @layer base {
   html {
     scroll-behavior: smooth;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Outfit', 'Plus Jakarta Sans', system-ui, sans-serif;
+    letter-spacing: -0.025em;
   }
 
   /* Custom subtle scrollbar */
@@ -21,6 +32,17 @@
   }
   ::-webkit-scrollbar-thumb:hover {
     background: #a18072;
+  }
+
+  /* Disable number input spin buttons */
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
   }
 }
 
@@ -51,5 +73,39 @@
 
   .card-hover-lift {
     @apply transition-all duration-300 hover:-translate-y-1.5 hover:shadow-premium;
+  }
+}
+
+@layer utilities {
+  /* Scrollbar hiding utilities */
+  .scrollbar-none::-webkit-scrollbar,
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-none,
+  .no-scrollbar {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+  }
+
+  /* Custom visible thin scrollbar for scrollable cart and catalog */
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: #f5f0ec;
+    border-radius: 9999px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: #c5a99c;
+    border-radius: 9999px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: #8b6859;
+  }
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: #c5a99c #f5f0ec;
   }
 }

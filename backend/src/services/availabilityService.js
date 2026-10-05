@@ -75,13 +75,16 @@ function getWorkingHoursForDate(workingHours, date) {
  * @returns {Promise<Array>}
  */
 async function getBlockingAppointments(staffId, date) {
+  const d = new Date(date);
+  const dayStart = startOfDay(d);
+  const dayEnd = endOfDay(d);
   return Appointment.find({
     staff: staffId,
-    appointmentDate: {
-      $gte: startOfDay(date),
-      $lte: endOfDay(date),
-    },
     status: { $in: BLOCKING_STATUSES },
+    $or: [
+      { appointmentDate: { $gte: dayStart, $lte: dayEnd } },
+      { startTime: { $gte: dayStart, $lte: dayEnd } },
+    ],
   })
     .select('startTime endTime status')
     .lean();
@@ -108,27 +111,29 @@ async function getBlockingAppointments(staffId, date) {
  * @param {number} [params.slotInterval=15] - minutes between slot options
  * @returns {Promise<{ available: boolean, slots: Array<{ startTime: string, endTime: string }> }>}
  */
-export async function getAvailableSlots({ staffId, serviceId, date, slotInterval = 15 }) {
+export async function getAvailableSlots({ staffId, serviceId, serviceIds, date, slotInterval = 15 }) {
   const targetDate = new Date(date);
+  const ids = serviceIds
+    ? (Array.isArray(serviceIds) ? serviceIds : String(serviceIds).split(',').map((s) => s.trim()).filter(Boolean))
+    : [serviceId].filter(Boolean);
 
-  const [staff, service] = await Promise.all([
+  const [staff, serviceDocs] = await Promise.all([
     Staff.findById(staffId).select('workingHours leaves isActive services').lean(),
-    Service.findById(serviceId).select('duration bufferTime isActive').lean(),
+    Service.find({ _id: { $in: ids }, isActive: true }).select('duration bufferTime isActive').lean(),
   ]);
 
   if (!staff || !staff.isActive) {
     throw new NotFoundError('Staff member');
   }
-  if (!service || !service.isActive) {
+  if (!serviceDocs || serviceDocs.length === 0) {
     throw new NotFoundError('Service');
   }
 
-  // Check staff can perform this service
-  const canPerform = staff.services.some(
-    (s) => String(s) === String(serviceId)
-  );
-  if (!canPerform) {
-    throw new AppError('This staff member does not perform the selected service', 400, 'STAFF_SERVICE_MISMATCH');
+  // Check staff can perform all selected services
+  const staffServicesSet = new Set((staff.services || []).map((s) => String(s)));
+  const canPerformAll = ids.every((id) => staffServicesSet.has(String(id)));
+  if (!canPerformAll) {
+    throw new AppError('This staff member does not perform all selected services', 400, 'STAFF_SERVICE_MISMATCH');
   }
 
   // Check leave
@@ -142,7 +147,9 @@ export async function getAvailableSlots({ staffId, serviceId, date, slotInterval
     return { available: false, slots: [], reason: 'NOT_WORKING_DAY' };
   }
 
-  const totalSlotMinutes = service.duration + (service.bufferTime || 0);
+  const totalDuration = serviceDocs.reduce((sum, s) => sum + s.duration, 0);
+  const maxBuffer = Math.max(...serviceDocs.map((s) => s.bufferTime || 0), 0);
+  const totalSlotMinutes = totalDuration + maxBuffer;
 
   // Work window
   const workStart = setTimeOnDate(targetDate, workingHour.startTime);
@@ -153,12 +160,13 @@ export async function getAvailableSlots({ staffId, serviceId, date, slotInterval
 
   const now = new Date();
   const slots = [];
+  const blockedSlots = [];
 
   // Walk through slots
   let cursor = new Date(workStart);
   while (cursor < workEnd) {
     const slotStart = new Date(cursor);
-    const slotEnd = addMinutes(slotStart, service.duration);
+    const slotEnd = addMinutes(slotStart, totalDuration);
     const slotEndWithBuffer = addMinutes(slotStart, totalSlotMinutes);
 
     // Must fit within working hours
@@ -168,8 +176,8 @@ export async function getAvailableSlots({ staffId, serviceId, date, slotInterval
     const isInFuture = slotStart > addMinutes(now, 30);
 
     if (isInFuture) {
-      // Check no overlap with existing appointments
-      const hasConflict = existingAppointments.some((appt) =>
+      // Check overlap with existing appointments
+      const conflictingAppt = existingAppointments.find((appt) =>
         timesOverlap(
           slotStart,
           slotEndWithBuffer,
@@ -178,12 +186,22 @@ export async function getAvailableSlots({ staffId, serviceId, date, slotInterval
         )
       );
 
-      if (!hasConflict) {
+      if (!conflictingAppt) {
         slots.push({
           startTime: formatTimeHHMM(slotStart),
           endTime: formatTimeHHMM(slotEnd),
           startDateTime: slotStart.toISOString(),
           endDateTime: slotEnd.toISOString(),
+          status: 'AVAILABLE',
+        });
+      } else {
+        blockedSlots.push({
+          startTime: formatTimeHHMM(slotStart),
+          endTime: formatTimeHHMM(slotEnd),
+          startDateTime: slotStart.toISOString(),
+          endDateTime: slotEnd.toISOString(),
+          status: 'BLOCKED',
+          reason: 'Slot already reserved / occupied by another client',
         });
       }
     }
@@ -191,7 +209,16 @@ export async function getAvailableSlots({ staffId, serviceId, date, slotInterval
     cursor = addMinutes(cursor, slotInterval);
   }
 
-  return { available: slots.length > 0, slots };
+  return {
+    available: slots.length > 0,
+    slots,
+    blockedSlots,
+    totalSlotsCount: slots.length + blockedSlots.length,
+    workingHours: {
+      startTime: workingHour.startTime,
+      endTime: workingHour.endTime,
+    },
+  };
 }
 
 /**
@@ -240,8 +267,11 @@ export async function isSlotAvailable({ staffId, startTime, endTime, excludeAppo
  * @param {string} params.startTimeStr - "HH:MM"
  * @returns {Promise<object>} - { staff, service, startTime, endTime, appointmentDate }
  */
-export async function validateAndPrepareBooking({ staffId, serviceId, customerId, appointmentDate, startTimeStr }) {
+export async function validateAndPrepareBooking({ staffId, serviceId, serviceIds, customerId, appointmentDate, startTimeStr }) {
   const date = new Date(appointmentDate);
+  const ids = serviceIds
+    ? (Array.isArray(serviceIds) ? serviceIds : String(serviceIds).split(',').map((s) => s.trim()).filter(Boolean))
+    : [serviceId].filter(Boolean);
 
   // Prevent past-date bookings
   const today = new Date();
@@ -250,17 +280,18 @@ export async function validateAndPrepareBooking({ staffId, serviceId, customerId
     throw new AppError('Cannot book appointments in the past', 400, 'PAST_DATE');
   }
 
-  const [staff, service] = await Promise.all([
+  const [staff, serviceDocs] = await Promise.all([
     Staff.findById(staffId).select('workingHours leaves isActive services name').lean(),
-    Service.findById(serviceId).select('duration bufferTime price taxRate isActive name').lean(),
+    Service.find({ _id: { $in: ids }, isActive: true }).select('duration bufferTime price taxRate isActive name').lean(),
   ]);
 
   if (!staff || !staff.isActive) throw new NotFoundError('Staff member');
-  if (!service || !service.isActive) throw new AppError('This service is not currently available', 400, 'SERVICE_INACTIVE');
+  if (!serviceDocs || serviceDocs.length === 0) throw new AppError('The selected service is not currently available', 400, 'SERVICE_INACTIVE');
 
-  // Check staff can perform service
-  const canPerform = staff.services.some((s) => String(s) === String(serviceId));
-  if (!canPerform) throw new AppError('This staff member does not perform the selected service', 400, 'STAFF_SERVICE_MISMATCH');
+  // Check staff can perform all services
+  const staffServicesSet = new Set((staff.services || []).map((s) => String(s)));
+  const canPerformAll = ids.every((id) => staffServicesSet.has(String(id)));
+  if (!canPerformAll) throw new AppError('This staff member does not perform all selected services', 400, 'STAFF_SERVICE_MISMATCH');
 
   // Check leave
   if (isStaffOnLeave(staff.leaves, date)) {
@@ -273,9 +304,12 @@ export async function validateAndPrepareBooking({ staffId, serviceId, customerId
     throw new AppError('The salon is not open on this day', 409, 'NOT_WORKING_DAY');
   }
 
+  const totalDuration = serviceDocs.reduce((sum, s) => sum + s.duration, 0);
+  const maxBuffer = Math.max(...serviceDocs.map((s) => s.bufferTime || 0), 0);
+
   const startTime = setTimeOnDate(date, startTimeStr);
-  const endTime = addMinutes(startTime, service.duration);
-  const endTimeWithBuffer = addMinutes(startTime, service.duration + (service.bufferTime || 0));
+  const endTime = addMinutes(startTime, totalDuration);
+  const endTimeWithBuffer = addMinutes(startTime, totalDuration + maxBuffer);
 
   // Validate slot fits within working hours
   const workStart = setTimeOnDate(date, workingHour.startTime);
@@ -291,7 +325,10 @@ export async function validateAndPrepareBooking({ staffId, serviceId, customerId
 
   return {
     staff,
-    service,
+    service: serviceDocs[0],
+    services: serviceDocs,
+    additionalServices: serviceDocs.slice(1),
+    totalDuration,
     startTime,
     endTime,
     endTimeWithBuffer,

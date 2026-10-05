@@ -4,8 +4,23 @@ import { DATE_REGEX, TIME_REGEX } from '../../../shared/validation-rules/index.j
 
 export const createAppointmentValidator = [
   body('serviceId')
+    .optional()
     .isMongoId()
     .withMessage('Valid serviceId is required'),
+  body('serviceIds')
+    .optional()
+    .isArray({ min: 1 })
+    .withMessage('serviceIds must be an array of service IDs'),
+  body('serviceIds.*')
+    .optional()
+    .isMongoId()
+    .withMessage('Each item in serviceIds must be a valid MongoId'),
+  body().custom((val) => {
+    if (!val.serviceId && (!val.serviceIds || val.serviceIds.length === 0)) {
+      throw new Error('Either serviceId or serviceIds array is required');
+    }
+    return true;
+  }),
   body('staffId')
     .isMongoId()
     .withMessage('Valid staffId is required'),
@@ -55,8 +70,18 @@ export const getSlotsValidator = [
     .isMongoId()
     .withMessage('Valid staffId query parameter is required'),
   query('serviceId')
+    .optional()
     .isMongoId()
     .withMessage('Valid serviceId query parameter is required'),
+  query('serviceIds')
+    .optional()
+    .isString(),
+  query().custom((val) => {
+    if (!val.serviceId && !val.serviceIds) {
+      throw new Error('Either serviceId or serviceIds query parameter is required');
+    }
+    return true;
+  }),
   query('date')
     .matches(DATE_REGEX)
     .withMessage('Date must be in YYYY-MM-DD format'),

@@ -42,13 +42,15 @@ import { startOfDay, endOfDay } from '../utils/dateTime.js';
 /**
  * Create a new appointment (customer booking flow)
  */
-export async function createAppointment({ customerId, staffId, serviceId, appointmentDate, startTimeStr, notes, offerCode }) {
+export async function createAppointment({ customerId, staffId, serviceId, serviceIds, appointmentDate, startTimeStr, notes, offerCode }) {
   // 1. Validate all business rules
-  const { service, staff, startTime, endTime, appointmentDate: normalizedDate } =
-    await validateAndPrepareBooking({ staffId, serviceId, customerId, appointmentDate, startTimeStr });
+  const { service, services, additionalServices, staff, startTime, endTime, appointmentDate: normalizedDate } =
+    await validateAndPrepareBooking({ staffId, serviceId, serviceIds, customerId, appointmentDate, startTimeStr });
+
+  const totalBasePrice = services.reduce((sum, s) => sum + s.price, 0);
 
   // 2. Validate offer (if provided)
-  const offer = await validateOffer(offerCode, serviceId, service.price);
+  const offer = await validateOffer(offerCode, service._id, totalBasePrice);
 
   // 3. Final slot check + appointment creation
   const executeBooking = async (sess = null) => {
@@ -65,7 +67,8 @@ export async function createAppointment({ customerId, staffId, serviceId, appoin
         {
           customer: customerId,
           staff: staffId,
-          service: serviceId,
+          service: service._id,
+          additionalServices: (additionalServices || []).map((s) => s._id),
           appointmentDate: normalizedDate,
           startTime,
           endTime,
@@ -110,13 +113,31 @@ export async function createAppointment({ customerId, staffId, serviceId, appoin
   // 4. Create draft invoice (non-blocking to appointment creation)
   const customer = await Customer.findById(customerId).lean();
   try {
-    const invoice = await createDraftInvoice({ appointment, service, offer, customerId });
-    await Appointment.findByIdAndUpdate(appointment._id, { invoice: invoice._id });
-    // Attach billing snapshot to appointment
-    const { billingSnapshot } = await import('./billingService.js').then(m => {
-      return { billingSnapshot: m.computeBilling(service, offer).billingSnapshot };
+    const invoice = await createDraftInvoice({ appointment, service, services, offer, customerId });
+    const effectiveTaxRate = service.taxRate || 18;
+    const discountAmount = invoice.totalDiscount || 0;
+    const totalAmount = invoice.totalAmount || 0;
+    const serviceNames = services.map((s) => s.name).join(' + ');
+
+    const billingSnapshot = {
+      serviceName: serviceNames,
+      servicePrice: totalBasePrice,
+      taxRate: effectiveTaxRate,
+      taxAmount: invoice.totalTax || 0,
+      discountAmount,
+      totalAmount,
+      services: services.map((s) => ({
+        serviceId: s._id,
+        name: s.name,
+        price: s.price,
+        duration: s.duration,
+      })),
+    };
+
+    await Appointment.findByIdAndUpdate(appointment._id, {
+      invoice: invoice._id,
+      billingSnapshot,
     });
-    await Appointment.findByIdAndUpdate(appointment._id, { billingSnapshot });
   } catch (err) {
     // Invoice creation failure should not fail the booking
     // The invoice can be created retroactively
@@ -188,9 +209,13 @@ export async function changeAppointmentStatus({ appointmentId, newStatus, change
     metadata: { from: currentStatus, to: newStatus, reason },
   });
 
-  // Notify customer
+  // Notify customer & staff
   if (appointment.customer) {
-    notifyAppointmentStatusChange(appointment, appointment.customer, newStatus).catch(() => {});
+    notifyAppointmentStatusChange(appointment, appointment.customer, newStatus, {
+      changedById,
+      changedByModel,
+      reason,
+    }).catch(() => {});
   }
 
   return appointment;
@@ -252,12 +277,19 @@ export async function getAppointments({ query, userRole, userId }) {
 
   if (query.date) {
     const d = new Date(query.date);
-    filter.appointmentDate = { $gte: startOfDay(d), $lte: endOfDay(d) };
+    const dayStart = startOfDay(d);
+    const dayEnd = endOfDay(d);
+    filter.$or = [
+      { appointmentDate: { $gte: dayStart, $lte: dayEnd } },
+      { startTime: { $gte: dayStart, $lte: dayEnd } },
+    ];
   } else if (query.startDate && query.endDate) {
-    filter.appointmentDate = {
-      $gte: startOfDay(new Date(query.startDate)),
-      $lte: endOfDay(new Date(query.endDate)),
-    };
+    const rangeStart = startOfDay(new Date(query.startDate));
+    const rangeEnd = endOfDay(new Date(query.endDate));
+    filter.$or = [
+      { appointmentDate: { $gte: rangeStart, $lte: rangeEnd } },
+      { startTime: { $gte: rangeStart, $lte: rangeEnd } },
+    ];
   }
 
   const [appointments, total] = await Promise.all([
@@ -267,7 +299,8 @@ export async function getAppointments({ query, userRole, userId }) {
       .limit(limit)
       .populate('customer', 'name phone')
       .populate('staff', 'name avatarUrl')
-      .populate('service', 'name duration category')
+      .populate('service', 'name duration category price')
+      .populate('additionalServices', 'name duration category price')
       .lean(),
     Appointment.countDocuments(filter),
   ]);

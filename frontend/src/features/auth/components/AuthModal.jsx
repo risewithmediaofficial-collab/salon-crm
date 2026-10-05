@@ -149,15 +149,25 @@ export function AuthModal() {
             By continuing, you agree to receive appointment reminders and updates via SMS.
           </p>
 
-          <Button
-            type="submit"
-            variant="primary"
-            className="w-full py-3.5 text-sm font-medium shadow-md shadow-salon-900/10"
-            isLoading={isLoading}
-            icon={ArrowRight}
-          >
-            Send Verification Code
-          </Button>
+          <div className="space-y-2.5 pt-1">
+            <Button
+              type="submit"
+              variant="primary"
+              className="w-full py-3.5 text-sm font-medium shadow-md shadow-salon-900/10"
+              isLoading={isLoading}
+              icon={ArrowRight}
+            >
+              Send Verification Code
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              className="w-full py-2.5 text-xs font-semibold text-stone-600 hover:text-stone-900 border border-stone-200"
+              onClick={handleClose}
+            >
+              Cancel
+            </Button>
+          </div>
         </form>
       ) : (
         <form onSubmit={handleVerifyOtp} className="space-y-5">
@@ -189,7 +199,7 @@ export function AuthModal() {
             <button
               type="button"
               onClick={() => setStep('phone')}
-              className="text-stone-500 hover:text-stone-800 font-medium transition-colors"
+              className="text-stone-500 hover:text-stone-800 font-medium transition-colors cursor-pointer"
             >
               Change number
             </button>
@@ -200,7 +210,7 @@ export function AuthModal() {
               <button
                 type="button"
                 onClick={handleSendOtp}
-                className="text-salon-800 hover:text-salon-950 font-semibold flex items-center gap-1.5 transition-colors"
+                className="text-salon-800 hover:text-salon-950 font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
                 Resend OTP
@@ -208,14 +218,24 @@ export function AuthModal() {
             )}
           </div>
 
-          <Button
-            type="submit"
-            variant="primary"
-            className="w-full py-3.5 text-sm font-medium shadow-md shadow-salon-900/10"
-            isLoading={isLoading}
-          >
-            Verify & Continue
-          </Button>
+          <div className="space-y-2.5 pt-1">
+            <Button
+              type="submit"
+              variant="primary"
+              className="w-full py-3.5 text-sm font-medium shadow-md shadow-salon-900/10"
+              isLoading={isLoading}
+            >
+              Verify & Continue
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              className="w-full py-2.5 text-xs font-semibold text-stone-600 hover:text-stone-900 border border-stone-200"
+              onClick={handleClose}
+            >
+              Cancel
+            </Button>
+          </div>
         </form>
       )}
     </Modal>

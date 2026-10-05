@@ -9,12 +9,14 @@ export function Modal({
   children,
   maxWidth = 'max-w-lg',
   className = '',
+  closeOnBackdropClick = false,
+  closeOnEscape = false,
 }) {
   const modalRef = useRef(null);
 
   useEffect(() => {
     function handleKeyDown(e) {
-      if (e.key === 'Escape' && isOpen) {
+      if (closeOnEscape && e.key === 'Escape' && isOpen) {
         onClose();
       }
     }
@@ -28,7 +30,7 @@ export function Modal({
       document.body.style.overflow = 'unset';
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, closeOnEscape]);
 
   if (!isOpen) return null;
 
@@ -42,12 +44,13 @@ export function Modal({
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-stone-900/40 backdrop-blur-sm transition-opacity"
-        onClick={onClose}
+        onClick={closeOnBackdropClick ? onClose : undefined}
       />
 
       {/* Modal Dialog Content */}
       <div
         ref={modalRef}
+        onClick={(e) => e.stopPropagation()}
         className={`relative w-full ${maxWidth} bg-white rounded-3xl shadow-premium border border-stone-200/70 z-10 overflow-hidden transform transition-all animate-in fade-in zoom-in-95 duration-300 ${className}`}
       >
         {/* Luxury Top Accent Line */}
@@ -57,7 +60,7 @@ export function Modal({
         <div className="flex items-start justify-between px-7 sm:px-8 pt-7 sm:pt-8 pb-4 border-b border-stone-100">
           <div>
             {title && (
-              <h3 id="modal-title" className="text-xl font-serif font-bold text-stone-900 tracking-tight">
+              <h3 id="modal-title" className="text-xl font-display font-bold text-stone-900 tracking-tight">
                 {title}
               </h3>
             )}

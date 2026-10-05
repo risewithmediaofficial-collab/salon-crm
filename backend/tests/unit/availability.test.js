@@ -39,4 +39,25 @@ describe('Availability Engine & Time Calculations', () => {
     expect(timeToMinutes('00:00')).toBe(0);
     expect(timeToMinutes('23:59')).toBe(1439);
   });
+
+  it('correctly blocks booking if candidate slot conflicts with an existing appointment', () => {
+    const existingBooking = {
+      startTime: new Date('2026-10-15T14:00:00Z'),
+      endTime: new Date('2026-10-15T15:00:00Z'),
+    };
+
+    const requestedCandidateA = {
+      startTime: new Date('2026-10-15T14:30:00Z'),
+      endTime: new Date('2026-10-15T15:30:00Z'),
+    };
+    // Should be blocked
+    expect(timesOverlap(requestedCandidateA.startTime, requestedCandidateA.endTime, existingBooking.startTime, existingBooking.endTime)).toBe(true);
+
+    const requestedCandidateB = {
+      startTime: new Date('2026-10-15T15:00:00Z'),
+      endTime: new Date('2026-10-15T16:00:00Z'),
+    };
+    // Boundary adjacent: non-overlapping, available
+    expect(timesOverlap(requestedCandidateB.startTime, requestedCandidateB.endTime, existingBooking.startTime, existingBooking.endTime)).toBe(false);
+  });
 });

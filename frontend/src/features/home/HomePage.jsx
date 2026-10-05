@@ -82,7 +82,7 @@ export function HomePage() {
             <span>Luxury Hair, Skin & Wellness Rituals</span>
           </div>
 
-          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-serif font-bold text-stone-900 tracking-tight max-w-4xl mx-auto leading-[1.12] mb-8">
+          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-display font-extrabold text-stone-900 tracking-tight max-w-4xl mx-auto leading-[1.12] mb-8">
             Where Elegance Meets <br className="hidden sm:inline" />
             <span className="luxury-gradient-text">Exceptional Care</span>
           </h1>
@@ -118,7 +118,7 @@ export function HomePage() {
           <div className="mt-18 pt-10 border-t border-stone-200/80 flex flex-wrap items-center justify-center gap-8 sm:gap-16 text-xs text-stone-500 font-medium">
             <div className="flex items-center gap-2.5">
               <ShieldCheck className="w-4.5 h-4.5 text-emerald-600 shrink-0" />
-              <span>Hospital-Grade Sanitization</span>
+              <span>Pristine Hygiene & Sanitization</span>
             </div>
             <div className="flex items-center gap-2.5">
               <Heart className="w-4.5 h-4.5 text-rose-500 shrink-0" />
@@ -139,7 +139,7 @@ export function HomePage() {
             <span className="text-xs font-bold uppercase tracking-widest text-salon-700 bg-salon-50 px-3.5 py-1.5 rounded-full border border-salon-200 inline-block mb-3">
               Signature Treatments
             </span>
-            <h2 className="text-3xl sm:text-4xl font-serif font-bold text-stone-900 tracking-tight">
+            <h2 className="text-3xl sm:text-4xl font-display font-bold text-stone-900 tracking-tight">
               Crafted For Your Radiance
             </h2>
           </div>
@@ -167,7 +167,7 @@ export function HomePage() {
                   </span>
                 </div>
 
-                <h3 className="text-lg font-serif font-bold text-stone-900 mb-2 group-hover:text-salon-800 transition-colors">
+                <h3 className="text-lg font-display font-bold text-stone-900 mb-2 group-hover:text-salon-800 transition-colors">
                   {svc.name}
                 </h3>
                 <p className="text-xs text-stone-500 leading-relaxed line-clamp-3 mb-8">
@@ -176,7 +176,7 @@ export function HomePage() {
               </div>
 
               <div className="pt-4 border-t border-stone-100 flex items-center justify-between">
-                <span className="text-lg font-serif font-bold text-stone-900">
+                <span className="text-lg font-display font-bold text-stone-900">
                   {formatCurrency(svc.price)}
                 </span>
                 <Button
@@ -204,7 +204,7 @@ export function HomePage() {
               <span className="text-xs font-bold uppercase tracking-widest text-gold-400 mb-3 block">
                 Seasonal Privilege
               </span>
-              <h3 className="text-2xl sm:text-4xl font-serif font-bold mb-4 tracking-tight">
+              <h3 className="text-2xl sm:text-4xl font-display font-extrabold mb-4 tracking-tight">
                 {activeOffers[0].title}
               </h3>
               <p className="text-sm text-stone-300 leading-relaxed mb-6">
@@ -232,7 +232,7 @@ export function HomePage() {
           <span className="text-xs font-bold uppercase tracking-widest text-salon-700 bg-salon-50 px-3.5 py-1.5 rounded-full border border-salon-200 inline-block mb-3">
             Expert Stylists
           </span>
-          <h2 className="text-3xl sm:text-4xl font-serif font-bold text-stone-900 tracking-tight mb-3">
+          <h2 className="text-3xl sm:text-4xl font-display font-bold text-stone-900 tracking-tight mb-3">
             Meet Our Resident Specialists
           </h2>
           <p className="text-sm text-stone-500 leading-relaxed">
@@ -249,7 +249,7 @@ export function HomePage() {
                 size="xl"
                 className="mx-auto mb-5 ring-4 ring-salon-100"
               />
-              <h3 className="text-lg font-serif font-bold text-stone-900 mb-1.5">{st.name}</h3>
+              <h3 className="text-lg font-display font-bold text-stone-900 mb-1.5">{st.name}</h3>
               <p className="text-xs text-stone-500 leading-relaxed line-clamp-2 mb-6">{st.bio}</p>
               <Button
                 variant="outline"
@@ -270,7 +270,7 @@ export function HomePage() {
           <span className="text-xs font-bold uppercase tracking-widest text-salon-700 bg-salon-50 px-3.5 py-1.5 rounded-full border border-salon-200 inline-block mb-3">
             Client Stories
           </span>
-          <h2 className="text-3xl sm:text-4xl font-serif font-bold text-stone-900 tracking-tight">
+          <h2 className="text-3xl sm:text-4xl font-display font-bold text-stone-900 tracking-tight">
             Loved By Over 2,400+ Patrons
           </h2>
         </div>
@@ -309,7 +309,7 @@ export function HomePage() {
               </div>
 
               <div className="pt-4 border-t border-stone-100 flex items-center gap-3.5">
-                <div className="w-9 h-9 rounded-full bg-salon-100 border border-salon-300 text-salon-800 font-serif font-bold flex items-center justify-center text-xs">
+                <div className="w-9 h-9 rounded-full bg-salon-100 border border-salon-300 text-salon-800 font-display font-bold flex items-center justify-center text-xs">
                   {t.name[0]}
                 </div>
                 <div>
@@ -325,4 +325,4 @@ export function HomePage() {
   );
 }
 
-export default HomePage;
+export default HomePage;  

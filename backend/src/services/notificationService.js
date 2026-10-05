@@ -62,10 +62,10 @@ export async function notifyAppointmentBooked(appointment, customer, service, st
     });
   }
 
-  // 2. Notify Salon Admin / Management team
+  // 2. Notify Salon Admin / Management team & Staff
   try {
-    const admins = await User.find({
-      role: { $in: [ROLES.OWNER, ROLES.MANAGER] },
+    const teamMembers = await User.find({
+      role: { $in: [ROLES.OWNER, ROLES.MANAGER, ROLES.STAFF] },
       isActive: true,
     }).select('_id');
 
@@ -73,42 +73,28 @@ export async function notifyAppointmentBooked(appointment, customer, service, st
     const serviceName = service?.name || 'treatment';
     const stylistName = staff?.name || 'stylist';
 
-    for (const admin of admins) {
+    for (const member of teamMembers) {
       await createNotification({
-        recipientId: admin._id,
+        recipientId: member._id,
         recipientModel: 'User',
         type: NOTIFICATION_TYPE.APPOINTMENT_BOOKED,
-        title: 'New Appointment Booked',
+        title: 'New Online Appointment',
         message: `${customerName} booked ${serviceName} with ${stylistName}`,
         relatedEntityType: 'Appointment',
         relatedEntityId: appointment._id,
       });
     }
-
-    // 3. Notify assigned Staff (if user account exists)
-    if (staff?.user) {
-      const alreadyNotified = admins.some((a) => a._id.toString() === staff.user.toString());
-      if (!alreadyNotified) {
-        await createNotification({
-          recipientId: staff.user,
-          recipientModel: 'User',
-          type: NOTIFICATION_TYPE.APPOINTMENT_BOOKED,
-          title: 'New Appointment Assigned',
-          message: `${customerName} booked ${serviceName} with you.`,
-          relatedEntityType: 'Appointment',
-          relatedEntityId: appointment._id,
-        });
-      }
-    }
   } catch (err) {
-    logger.warn('Failed to dispatch admin/staff notification for appointment', { error: err.message });
+    logger.warn('Failed to dispatch team notification for appointment', { error: err.message });
   }
 }
 
 /**
  * Notify customer of appointment status update
  */
-export async function notifyAppointmentStatusChange(appointment, customer, newStatus) {
+export async function notifyAppointmentStatusChange(appointment, customer, newStatus, options = {}) {
+  const { changedByModel, reason } = options;
+
   const messages = {
     ACCEPTED: { title: 'Appointment Accepted', message: 'Your appointment has been accepted. See you soon!' },
     REJECTED: { title: 'Appointment Rejected', message: 'Your appointment request was not accepted. Please try booking another slot.' },
@@ -118,18 +104,46 @@ export async function notifyAppointmentStatusChange(appointment, customer, newSt
   };
 
   const content = messages[newStatus];
-  if (!content) return;
+  if (content && customer) {
+    await createNotification({
+      recipientId: customer._id,
+      recipientModel: 'Customer',
+      type: NOTIFICATION_TYPE[`APPOINTMENT_${newStatus}`] || NOTIFICATION_TYPE.APPOINTMENT_BOOKED,
+      ...content,
+      relatedEntityType: 'Appointment',
+      relatedEntityId: appointment._id,
+      sendSMSFlag: true,
+      phone: customer.phone,
+    });
+  }
 
-  await createNotification({
-    recipientId: customer._id,
-    recipientModel: 'Customer',
-    type: NOTIFICATION_TYPE[`APPOINTMENT_${newStatus}`] || NOTIFICATION_TYPE.APPOINTMENT_BOOKED,
-    ...content,
-    relatedEntityType: 'Appointment',
-    relatedEntityId: appointment._id,
-    sendSMSFlag: true,
-    phone: customer.phone,
-  });
+  // If action was taken online by a customer (e.g. cancelled), notify salon staff & management
+  if (changedByModel === 'Customer') {
+    try {
+      const teamMembers = await User.find({
+        role: { $in: [ROLES.OWNER, ROLES.MANAGER, ROLES.STAFF] },
+        isActive: true,
+      }).select('_id');
+
+      const customerName = customer?.name || 'A customer';
+      const statusTitle = newStatus === 'CANCELLED' ? 'Online Appointment Cancelled' : `Online Appointment ${newStatus}`;
+      const statusMsg = `${customerName} ${newStatus === 'CANCELLED' ? 'cancelled their appointment online' : `updated their appointment status to ${newStatus}`}${reason ? `: "${reason}"` : '.'}`;
+
+      for (const member of teamMembers) {
+        await createNotification({
+          recipientId: member._id,
+          recipientModel: 'User',
+          type: NOTIFICATION_TYPE[`APPOINTMENT_${newStatus}`] || NOTIFICATION_TYPE.APPOINTMENT_BOOKED,
+          title: statusTitle,
+          message: statusMsg,
+          relatedEntityType: 'Appointment',
+          relatedEntityId: appointment._id,
+        });
+      }
+    } catch (err) {
+      logger.warn('Failed to dispatch team notification for customer status change', { error: err.message });
+    }
+  }
 }
 
 /**

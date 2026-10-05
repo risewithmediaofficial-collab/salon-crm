@@ -16,7 +16,17 @@ export const Input = forwardRef(function Input(
   },
   ref
 ) {
-  const inputId = id || props.name || Math.random().toString(36).substring(2, 9);
+  const inputId =
+    id ||
+    props.name ||
+    (label ? `input-${label.toLowerCase().replace(/[^a-z0-9]/g, '-')}` : undefined);
+
+  const handleWheel = (e) => {
+    if (type === 'number') {
+      e.currentTarget.blur();
+    }
+    props.onWheel?.(e);
+  };
 
   return (
     <div className={`w-full ${containerClassName}`}>
@@ -41,6 +51,7 @@ export const Input = forwardRef(function Input(
           id={inputId}
           type={type}
           required={required}
+          onWheel={handleWheel}
           className={`w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm text-stone-900 placeholder:text-stone-400 transition-colors focus:outline-none focus:ring-2 disabled:bg-stone-100 disabled:text-stone-500 ${
             Icon ? 'pl-10' : ''
           } ${endAdornment ? 'pr-11' : ''} ${
