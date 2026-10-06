@@ -150,7 +150,7 @@ export async function notifyAppointmentStatusChange(appointment, customer, newSt
  * Get unread notification count for a recipient
  */
 export async function getUnreadCount(recipientId) {
-  return Notification.countDocuments({ recipient: recipientId, isRead: false });
+  return Notification.countDocuments({ recipient: recipientId, isRead: { $ne: true } });
 }
 
 export async function getNotifications(recipientId, { page = 1, limit = 20 } = {}) {
@@ -162,7 +162,7 @@ export async function getNotifications(recipientId, { page = 1, limit = 20 } = {
       .limit(limit)
       .lean(),
     Notification.countDocuments({ recipient: recipientId }),
-    Notification.countDocuments({ recipient: recipientId, isRead: false }),
+    Notification.countDocuments({ recipient: recipientId, isRead: { $ne: true } }),
   ]);
 
   return { notifications, total, unread };
@@ -178,7 +178,7 @@ export async function markAsRead(notificationId, recipientId) {
 
 export async function markAllAsRead(recipientId) {
   return Notification.updateMany(
-    { recipient: recipientId, isRead: false },
+    { recipient: recipientId, isRead: { $ne: true } },
     { isRead: true, readAt: new Date() }
   );
 }

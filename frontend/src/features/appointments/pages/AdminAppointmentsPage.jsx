@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import appointmentService from '../appointmentService.js';
+import useNotificationStore from '../../../store/notificationStore.js';
 import useUIStore from '../../../store/uiStore.js';
 import Card from '../../../components/common/Card.jsx';
 import Button from '../../../components/common/Button.jsx';
@@ -50,6 +51,11 @@ export function AdminAppointmentsPage() {
   // Live new appointment arrival alert banner
   const [liveBanner, setLiveBanner] = useState(null);
   const knownAptIdsRef = useRef(new Set());
+
+  // Auto-clear notification badges when admin visits this page
+  useEffect(() => {
+    useNotificationStore.getState().markAllRead();
+  }, []);
 
   const loadAppointments = async (page = 1, options = {}) => {
     const isSilent = Boolean(options.silent);
@@ -167,6 +173,7 @@ export function AdminAppointmentsPage() {
       if (activeAppointment && activeAppointment._id === actionConfirm.appointmentId) {
         setActiveAppointment((prev) => ({ ...prev, status: actionConfirm.newStatus }));
       }
+      useNotificationStore.getState().markAllRead();
       loadAppointments(pagination.page);
     } catch (err) {
       showToast({
@@ -191,6 +198,30 @@ export function AdminAppointmentsPage() {
 
   return (
     <div className="space-y-6">
+      {/* Live New Appointment Alert Banner */}
+      {liveBanner && (
+        <div className="flex items-center justify-between p-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl shadow-sm animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center gap-3">
+            <span className="flex items-center justify-center w-8 h-8 rounded-xl bg-amber-500 text-white shrink-0">
+              <Sparkles className="w-4 h-4" />
+            </span>
+            <div>
+              <p className="text-xs font-bold text-amber-950">{liveBanner.title}</p>
+              <p className="text-xs text-amber-800">{liveBanner.message}</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setLiveBanner(null);
+              useNotificationStore.getState().markAllRead();
+            }}
+            className="text-xs font-semibold px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl shadow-xs transition-colors shrink-0"
+          >
+            Acknowledge
+          </button>
+        </div>
+      )}
       {/* Page Title & Date Filter Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>

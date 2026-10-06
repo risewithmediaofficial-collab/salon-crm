@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, Check, Calendar, Volume2, X, BellRing } from 'lucide-react';
+import { Bell, Check, Calendar, Volume2, X, BellRing, CheckCheck } from 'lucide-react';
 import useNotificationPoller from '../useNotificationPoller.js';
 import { playNotificationChime } from '../notificationAudio.js';
 import useAuthStore from '../../../store/authStore.js';
@@ -15,32 +15,55 @@ export function NotificationBell({
   const [showBanner, setShowBanner] = useState(false);
   const [bannerCount, setBannerCount] = useState(0);
   const dropdownRef = useRef(null);
+  const autoReadTimerRef = useRef(null);
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const targetPath = user?.role === 'CUSTOMER' ? '/my-appointments' : '/admin/appointments';
 
-  // Use shared data from AdminLayout if available, otherwise spin up own poller
-  const ownPoller = useNotificationPoller();
-  const unreadCount   = sharedUnreadCount   !== undefined ? sharedUnreadCount   : ownPoller.unreadCount;
-  const notifications = sharedNotifications !== undefined ? sharedNotifications : ownPoller.notifications;
-  const markAsRead    = sharedMarkAsRead    !== undefined ? sharedMarkAsRead    : ownPoller.markAsRead;
-  const markAllRead   = sharedMarkAllRead   !== undefined ? sharedMarkAllRead   : ownPoller.markAllRead;
+  // Use shared poller/store hook
+  const poller = useNotificationPoller();
+  const unreadCount   = sharedUnreadCount   !== undefined ? sharedUnreadCount   : poller.unreadCount;
+  const notifications = sharedNotifications !== undefined ? sharedNotifications : poller.notifications;
+  const markAsRead    = sharedMarkAsRead    !== undefined ? sharedMarkAsRead    : poller.markAsRead;
+  const markAllRead   = sharedMarkAllRead   !== undefined ? sharedMarkAllRead   : poller.markAllRead;
 
   // Show a sticky top banner whenever new unread arrive
   const prevUnreadRef = useRef(unreadCount);
   useEffect(() => {
     const prev = prevUnreadRef.current;
     prevUnreadRef.current = unreadCount;
-    // If count went UP, something new arrived — show the banner
     if (unreadCount > 0 && unreadCount > prev) {
       setBannerCount(unreadCount);
       setShowBanner(true);
     }
-    // If count drops to zero, auto-hide banner
     if (unreadCount === 0) {
       setShowBanner(false);
     }
   }, [unreadCount]);
+
+  // Auto-mark notifications as read smoothly after user opens the dropdown (viewing = acknowledging)
+  useEffect(() => {
+    if (isOpen && unreadCount > 0) {
+      setShowBanner(false);
+      autoReadTimerRef.current = setTimeout(() => {
+        markAllRead();
+      }, 700);
+    } else {
+      clearTimeout(autoReadTimerRef.current);
+    }
+    return () => clearTimeout(autoReadTimerRef.current);
+  }, [isOpen, unreadCount, markAllRead]);
+
+  // Helper: toggle dropdown
+  const toggleOpen = () => {
+    setIsOpen((prev) => {
+      const next = !prev;
+      if (next && unreadCount > 0) {
+        setShowBanner(false);
+      }
+      return next;
+    });
+  };
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -56,11 +79,17 @@ export function NotificationBell({
   }, [isOpen]);
 
   const handleItemClick = (notification) => {
+    // Action taken on notification item -> mark read immediately
     if (!notification.isRead) {
       markAsRead(notification._id);
     }
     setIsOpen(false);
     navigate(targetPath);
+  };
+
+  const handleItemCheck = (e, notification) => {
+    e.stopPropagation();
+    markAsRead(notification._id);
   };
 
   const formatTimeAgo = (dateStr) => {
@@ -95,7 +124,11 @@ export function NotificationBell({
           <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
-              onClick={() => { navigate(targetPath); setShowBanner(false); markAllRead(); }}
+              onClick={() => {
+                setShowBanner(false);
+                markAllRead();
+                navigate(targetPath);
+              }}
               className="text-xs font-bold text-amber-900 bg-white/90 hover:bg-white px-3 py-1.5 rounded-lg transition-colors shadow-sm"
             >
               View Now
@@ -117,7 +150,7 @@ export function NotificationBell({
         {/* Bell Button */}
         <button
           type="button"
-          onClick={() => setIsOpen(!isOpen)}
+          onClick={toggleOpen}
           className={`relative p-2 rounded-xl transition-colors focus:outline-none ${
             unreadCount > 0
               ? 'text-amber-600 hover:text-amber-800 hover:bg-amber-50'
@@ -134,7 +167,7 @@ export function NotificationBell({
 
           {/* Unread Badge */}
           {unreadCount > 0 && (
-            <span className="absolute top-0.5 right-0.5 flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-rose-600 text-[10px] font-bold text-white ring-2 ring-white shadow-sm">
+            <span className="absolute top-0.5 right-0.5 flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-rose-600 text-[10px] font-bold text-white ring-2 ring-white shadow-sm transition-transform duration-200">
               {unreadCount > 99 ? '99+' : unreadCount}
             </span>
           )}
@@ -149,9 +182,13 @@ export function NotificationBell({
                 <span className="text-xs font-bold text-stone-900 uppercase tracking-wider">
                   Notifications
                 </span>
-                {unreadCount > 0 && (
+                {unreadCount > 0 ? (
                   <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 animate-pulse">
                     {unreadCount} new
+                  </span>
+                ) : (
+                  <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-emerald-100 text-emerald-700">
+                    All caught up
                   </span>
                 )}
               </div>
@@ -171,10 +208,11 @@ export function NotificationBell({
                 {unreadCount > 0 && (
                   <button
                     type="button"
-                    onClick={markAllRead}
-                    className="text-[10px] text-salon-700 hover:text-salon-900 font-semibold p-1 rounded hover:bg-salon-50 transition-colors"
+                    onClick={() => markAllRead()}
+                    className="text-[10px] text-salon-700 hover:text-salon-900 font-semibold p-1 rounded hover:bg-salon-50 transition-colors flex items-center gap-1"
                   >
-                    Mark all read
+                    <CheckCheck className="w-3.5 h-3.5" />
+                    <span>Mark all read</span>
                   </button>
                 )}
               </div>
@@ -230,8 +268,18 @@ export function NotificationBell({
                       </p>
                     </div>
 
-                    {!n.isRead && (
-                      <span className="w-2 h-2 rounded-full bg-salon-600 shrink-0 mt-1.5 animate-pulse" />
+                    {/* Action on single item: mark read button / unread dot */}
+                    {!n.isRead ? (
+                      <button
+                        type="button"
+                        onClick={(e) => handleItemCheck(e, n)}
+                        className="p-1 rounded-lg text-amber-600 hover:text-emerald-700 hover:bg-emerald-50 transition-colors shrink-0"
+                        title="Mark as read"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                      </button>
+                    ) : (
+                      <span className="w-1.5 h-1.5 rounded-full bg-stone-300 shrink-0 mt-2" />
                     )}
                   </div>
                 ))
@@ -243,6 +291,7 @@ export function NotificationBell({
               <button
                 type="button"
                 onClick={() => {
+                  markAllRead();
                   setIsOpen(false);
                   navigate(targetPath);
                 }}

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import appointmentService from '../../appointments/appointmentService.js';
 import staffService from '../../staff/staffService.js';
+import useNotificationStore from '../../../store/notificationStore.js';
 import Card from '../../../components/common/Card.jsx';
 import Button from '../../../components/common/Button.jsx';
 import Avatar from '../../../components/common/Avatar.jsx';
@@ -52,6 +53,7 @@ export function CalendarPage() {
   };
 
   useEffect(() => {
+    useNotificationStore.getState().markAllRead();
     loadData(false);
   }, [selectedDate]);
 

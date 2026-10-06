@@ -3,6 +3,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import useAuthStore from '../../../store/authStore.js';
 import useUIStore from '../../../store/uiStore.js';
 import appointmentService from '../appointmentService.js';
+import notificationService from '../../notifications/notificationService.js';
+import useNotificationStore from '../../../store/notificationStore.js';
 
 import Card from '../../../components/common/Card.jsx';
 import Button from '../../../components/common/Button.jsx';
@@ -34,6 +36,11 @@ export function MyAppointmentsPage() {
   const [appointments, setAppointments] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Auto-clear notification count when user visits this page (viewing = acknowledging)
+  useEffect(() => {
+    useNotificationStore.getState().markAllRead();
+  }, []);
 
   // Cancellation state
   const [cancellingAppointment, setCancellingAppointment] = useState(null);
@@ -122,6 +129,7 @@ export function MyAppointmentsPage() {
       });
       setCancellingAppointment(null);
       setCancelReason('');
+      useNotificationStore.getState().markAllRead();
       loadAppointments();
     } catch (err) {
       showToast({
@@ -151,6 +159,7 @@ export function MyAppointmentsPage() {
       setReviewingAppointment(null);
       setReviewComment('');
       setReviewRating(5);
+      useNotificationStore.getState().markAllRead();
       loadAppointments();
     } catch (err) {
       showToast({

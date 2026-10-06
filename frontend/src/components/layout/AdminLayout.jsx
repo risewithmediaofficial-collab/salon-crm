@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import config from '../../config/index.js';
 import NotificationBell from '../../features/notifications/components/NotificationBell.jsx';
+import ScrollToTop from '../common/ScrollToTop.jsx';
 import ErrorBoundary from '../common/ErrorBoundary.jsx';
 
 export function AdminLayout() {
@@ -74,6 +75,16 @@ export function AdminLayout() {
   const isPosRoute = location.pathname.startsWith('/admin/pos');
   const [isPosNavbarHidden, setIsPosNavbarHidden] = useState(false);
   const mainWrapperRef = useRef(null);
+
+  // Scroll to top on every admin route change
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    if (document.documentElement) document.documentElement.scrollTop = 0;
+    if (document.body) document.body.scrollTop = 0;
+    if (mainWrapperRef.current) {
+      mainWrapperRef.current.scrollTop = 0;
+    }
+  }, [location.pathname, location.search]);
 
   useEffect(() => {
     if (!isPosRoute) {
@@ -196,6 +207,10 @@ export function AdminLayout() {
                 to={item.path}
                 onClick={() => {
                   if (window.innerWidth < 1024) setSidebarOpen(false);
+                  if (location.pathname === item.path) {
+                    if (mainWrapperRef.current) mainWrapperRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }
                 }}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${
                   isActive
@@ -246,6 +261,7 @@ export function AdminLayout() {
       {/* Main Wrapper with Sidebar Offset */}
       <div
         ref={mainWrapperRef}
+        data-scroll-container
         className={`lg:pl-64 flex flex-col flex-1 ${
           isPosRoute ? 'h-screen overflow-y-auto scrollbar-none scroll-smooth' : 'min-h-screen'
         }`}
@@ -335,6 +351,7 @@ export function AdminLayout() {
         </main>
       </div>
 
+      <ScrollToTop />
       <ToastContainer />
     </div>
   );

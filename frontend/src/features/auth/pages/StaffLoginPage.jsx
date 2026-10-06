@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import useAuthStore from '../../../store/authStore.js';
 import useUIStore from '../../../store/uiStore.js';
@@ -11,6 +11,10 @@ import config from '../../../config/index.js';
 
 export function StaffLoginPage() {
   const navigate = useNavigate();
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, []);
   const setAuth = useAuthStore((state) => state.setAuth);
   const showToast = useUIStore((state) => state.showToast);
 

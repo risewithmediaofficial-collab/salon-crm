@@ -152,6 +152,11 @@ export function BookingWizardPage() {
     }
   }, [currentStep, selectedServices, selectedStaff, selectedDate, selectedSlot, notes, offerCode, validatedOffer]);
 
+  // Scroll to top smoothly when changing wizard steps
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+  }, [currentStep]);
+
   // Reset wizard progress and clear storage
   const handleResetBooking = () => {
     clearDraftFromStorage();

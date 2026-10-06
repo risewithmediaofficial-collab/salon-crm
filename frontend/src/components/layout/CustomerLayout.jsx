@@ -6,6 +6,7 @@ import Button from '../common/Button.jsx';
 import ToastContainer from '../common/ToastContainer.jsx';
 import AuthModal from '../../features/auth/components/AuthModal.jsx';
 import NotificationBell from '../../features/notifications/components/NotificationBell.jsx';
+import ScrollToTop from '../common/ScrollToTop.jsx';
 import {
   Calendar,
   Sparkles,
@@ -42,10 +43,13 @@ export function CustomerLayout() {
     };
   }, [mobileMenuOpen]);
 
-  // Close mobile menu on route change or ESC key
+  // Scroll to top and close mobile menu on route change
   useEffect(() => {
     setMobileMenuOpen(false);
-  }, [location.pathname]);
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    if (document.documentElement) document.documentElement.scrollTop = 0;
+    if (document.body) document.body.scrollTop = 0;
+  }, [location.pathname, location.search]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -122,6 +126,11 @@ export function CustomerLayout() {
                 <Link
                   key={link.path}
                   to={link.path}
+                  onClick={() => {
+                    if (location.pathname === link.path) {
+                      window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+                    }
+                  }}
                   className={`px-4 py-1.5 rounded-full text-xs font-semibold tracking-wide transition-all duration-200 ${
                     isActive
                       ? 'bg-salon-900 text-white shadow-xs'
@@ -210,7 +219,12 @@ export function CustomerLayout() {
                   <Link
                     key={link.path}
                     to={link.path}
-                    onClick={() => setMobileMenuOpen(false)}
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      if (location.pathname === link.path) {
+                        window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+                      }
+                    }}
                     className={`block px-4 py-3 rounded-2xl text-base font-semibold transition-all ${
                       isActive
                         ? 'bg-salon-900 text-white shadow-xs'
@@ -359,7 +373,8 @@ export function CustomerLayout() {
         </div>
       </footer>
 
-      {/* Global Modals & Toasts */}
+      {/* Global Modals, ScrollToTop & Toasts */}
+      <ScrollToTop />
       <AuthModal />
       <ToastContainer />
     </div>
