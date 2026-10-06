@@ -68,7 +68,7 @@ services:
     container_name: ${MONGO_CONTAINER_NAME:-salon-crm-mongo}
     restart: unless-stopped
     ports:
-      - "${MONGO_PORT:-27022}:27017"
+      - "${MONGO_PORT:-27023}:27017"
     environment:
       MONGO_INITDB_DATABASE: ${MONGO_DB_NAME:-salon-crm}
     volumes:
