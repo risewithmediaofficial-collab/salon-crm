@@ -72,7 +72,7 @@ jobs:
           script: |
             # Deployment variables with configurable defaults
             DEPLOY_DIR="${DEPLOY_PATH:-/docker/billing}"
-            export FRONTEND_PORT="${FRONTEND_PORT:-95}"
+            export FRONTEND_PORT="${FRONTEND_PORT:-96}"
             export BACKEND_PORT="${BACKEND_PORT:-5012}"
             export MONGO_PORT="${MONGO_PORT:-27028}"
 
