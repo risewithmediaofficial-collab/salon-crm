@@ -16,6 +16,9 @@ import routes from './routes/index.js';
 
 const app = express();
 
+// Trust reverse proxy (Nginx container in Docker) for accurate client IPs and rate limiting
+app.set('trust proxy', 1);
+
 // Security headers
 app.use(
   helmet({

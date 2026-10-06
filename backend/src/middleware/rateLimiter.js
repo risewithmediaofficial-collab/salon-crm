@@ -26,11 +26,11 @@ export const apiLimiter = rateLimit({
  */
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10,
+  max: 30, // Relaxed from 10 to 30 to avoid locking out staff during shifts
   standardHeaders: true,
   legacyHeaders: false,
   handler: rateLimitHandler,
-  skipSuccessfulRequests: false,
+  skipSuccessfulRequests: true, // Successful logins never count against the rate limit
 });
 
 /**
