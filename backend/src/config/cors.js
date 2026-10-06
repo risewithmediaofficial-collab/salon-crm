@@ -2,11 +2,14 @@ import env from './environment.js';
 
 export const corsOptions = {
   origin(origin, callback) {
-    // Allow requests with no origin (mobile apps, curl, etc.) in dev
-    if (!origin && env.isDevelopment()) {
+    // Allow requests with no origin (mobile apps, curl, container health checks, server-to-server)
+    if (!origin) {
       return callback(null, true);
     }
-    if (env.CORS_ALLOWED_ORIGINS.includes(origin)) {
+    if (
+      env.CORS_ALLOWED_ORIGINS.includes('*') ||
+      env.CORS_ALLOWED_ORIGINS.includes(origin)
+    ) {
       return callback(null, true);
     }
     callback(new Error(`CORS: Origin ${origin} not allowed`));
