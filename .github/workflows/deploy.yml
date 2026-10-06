@@ -96,12 +96,18 @@ jobs:
               cp .env.example .env
             fi
 
+            # Sync active port configuration into existing .env file
+            echo "⚙️ Updating port configuration in .env..."
+            grep -q "^FRONTEND_PORT=" .env && sed -i "s/^FRONTEND_PORT=.*/FRONTEND_PORT=$FRONTEND_PORT/" .env || echo "FRONTEND_PORT=$FRONTEND_PORT" >> .env
+            grep -q "^BACKEND_PORT=" .env && sed -i "s/^BACKEND_PORT=.*/BACKEND_PORT=$BACKEND_PORT/" .env || echo "BACKEND_PORT=$BACKEND_PORT" >> .env
+            grep -q "^MONGO_PORT=" .env && sed -i "s/^MONGO_PORT=.*/MONGO_PORT=$MONGO_PORT/" .env || echo "MONGO_PORT=$MONGO_PORT" >> .env
+
             echo "🐳 Building and launching Docker containers..."
             echo "   • Frontend: :$FRONTEND_PORT"
             echo "   • Backend:  :$BACKEND_PORT"
             echo "   • MongoDB:  :$MONGO_PORT"
 
-            docker compose up -d --build --remove-orphans
+            docker compose up -d --build --force-recreate --remove-orphans
 
             echo "🧹 Cleaning up unused Docker images..."
             docker image prune -f
