@@ -10,10 +10,13 @@ import Appointment from '../models/Appointment.js';
 import { ROLES, SERVICE_CATEGORY, OFFER_TYPE, APPOINTMENT_STATUS } from '../constants/index.js';
 import logger from '../utils/logger.js';
 
-async function seed() {
+export async function seedDatabase() {
+  const shouldDisconnect = mongoose.connection.readyState !== 1;
   try {
-    await mongoose.connect(env.MONGODB_URI);
-    logger.info('Connected to MongoDB for seeding');
+    if (shouldDisconnect) {
+      await mongoose.connect(env.MONGODB_URI);
+      logger.info('Connected to MongoDB for seeding');
+    }
 
     // 1. Seed Owner Admin
     let owner = await User.findOne({ email: 'admin@salon.com' });
@@ -100,6 +103,46 @@ async function seed() {
         price: 3500,
         isActive: true,
         sortOrder: 7,
+      },
+      {
+        name: 'Hair Highlights & Balayage',
+        description: 'Customized dimensional blonde/caramel color, sun-kissed toner, and glossy shine finish.',
+        category: SERVICE_CATEGORY.HAIR,
+        duration: 90,
+        bufferTime: 15,
+        price: 3200,
+        isActive: true,
+        sortOrder: 8,
+      },
+      {
+        name: 'Charcoal Detox Pedicure',
+        description: 'Activated charcoal foot soak, dead skin peel, calloused foot buff, and hydration mask.',
+        category: SERVICE_CATEGORY.NAILS,
+        duration: 50,
+        bufferTime: 10,
+        price: 850,
+        isActive: true,
+        sortOrder: 9,
+      },
+      {
+        name: 'Ayurvedic Scalp Therapy & Shirodhara',
+        description: 'Traditional herbal warm oil head massage for stress reduction and root strengthening.',
+        category: SERVICE_CATEGORY.SPA,
+        duration: 45,
+        bufferTime: 15,
+        price: 1450,
+        isActive: true,
+        sortOrder: 10,
+      },
+      {
+        name: 'Bridal Glow & Pre-Wedding Ritual',
+        description: 'Full bridal treatment package: gold facial, body polish, hair spa, manicure & pedicure.',
+        category: SERVICE_CATEGORY.MAKEUP,
+        duration: 150,
+        bufferTime: 30,
+        price: 5999,
+        isActive: true,
+        sortOrder: 11,
       },
     ];
 
@@ -293,11 +336,24 @@ async function seed() {
     }
 
     logger.info('✅ Seeding completed successfully!');
-    process.exit(0);
+    if (shouldDisconnect) {
+      await mongoose.disconnect();
+    }
+    return true;
   } catch (error) {
     logger.error('Seeding failed:', error);
-    process.exit(1);
+    if (shouldDisconnect) {
+      try { await mongoose.disconnect(); } catch (_) {}
+    }
+    throw error;
   }
 }
 
-seed();
+// When executed directly via CLI: `node src/config/seed.js`
+if (process.argv[1] && process.argv[1].endsWith('seed.js')) {
+  seedDatabase()
+    .then(() => process.exit(0))
+    .catch(() => process.exit(1));
+}
+
+export default seedDatabase;

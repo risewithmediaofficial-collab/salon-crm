@@ -2,6 +2,9 @@ import app from './app.js';
 import env from './config/environment.js';
 import { connectDatabase, disconnectDatabase } from './config/database.js';
 import { startReminderJob, stopReminderJob } from './jobs/reminderJob.js';
+import { seedDatabase } from './config/seed.js';
+import User from './models/User.js';
+import Service from './models/Service.js';
 import logger from './utils/logger.js';
 
 let server;
@@ -10,6 +13,20 @@ async function bootstrap() {
   try {
     // 1. Connect to Database
     await connectDatabase();
+
+    // 1.5 Auto-seed initial admin, staff, and services if database is unseeded
+    try {
+      const [adminExists, serviceCount] = await Promise.all([
+        User.findOne({ email: 'admin@salon.com' }).lean(),
+        Service.countDocuments(),
+      ]);
+      if (!adminExists || serviceCount === 0) {
+        logger.info('Database unseeded, initializing default admin, staff, and service catalog...');
+        await seedDatabase();
+      }
+    } catch (seedErr) {
+      logger.warn('Auto-seed check encountered an issue (continuing startup):', seedErr.message);
+    }
 
     // 2. Start HTTP Server
     server = app.listen(env.PORT, () => {

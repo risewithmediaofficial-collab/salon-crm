@@ -109,6 +109,11 @@ jobs:
 
             docker compose up -d --build --force-recreate --remove-orphans
 
+            # Seed database with initial admin, staff, services, and categories
+            echo "🌱 Ensuring database is seeded with services and admin credentials..."
+            sleep 3
+            docker compose exec -T backend node src/config/seed.js || true
+
             echo "🧹 Cleaning up unused Docker images..."
             docker image prune -f
 
