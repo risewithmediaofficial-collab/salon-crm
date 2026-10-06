@@ -25,4 +25,22 @@ router.use('/audit', auditRoutes);
 router.use('/dashboard', dashboardRoutes);
 router.use('/notifications', notificationRoutes);
 
+// Database initialization / seeding endpoint
+router.all('/seed', async (_req, res, next) => {
+  try {
+    const { seedDatabase } = await import('../config/seed.js');
+    await seedDatabase();
+    return res.status(200).json({
+      success: true,
+      message: 'Database seeded successfully with initial admin, staff, and services.',
+      credentials: {
+        admin: 'admin@salon.com / Admin@Salon2026!',
+        staff: 'priya@salon.com / Staff@Salon2026!',
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;

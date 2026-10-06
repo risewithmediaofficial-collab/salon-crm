@@ -8,6 +8,7 @@ import Button from '../../../components/common/Button.jsx';
 import Card from '../../../components/common/Card.jsx';
 import { Mail, Lock, Shield, ArrowLeft, Eye, EyeOff, Sparkles, Check } from 'lucide-react';
 import config from '../../../config/index.js';
+import apiClient from '../../../services/apiClient.js';
 
 export function StaffLoginPage() {
   const navigate = useNavigate();
@@ -23,11 +24,33 @@ export function StaffLoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isSeeding, setIsSeeding] = useState(false);
 
   const fillCredentials = (fillEmail, fillPassword) => {
     setEmail(fillEmail);
     setPassword(fillPassword);
     setError('');
+  };
+
+  const handleSeedDatabase = async () => {
+    try {
+      setIsSeeding(true);
+      const res = await apiClient.post('/seed');
+      showToast({
+        type: 'success',
+        title: 'Database Initialized',
+        message: res.data?.message || 'Admin, staff, and services seeded successfully!',
+      });
+      fillCredentials('admin@salon.com', 'Admin@Salon2026!');
+    } catch (err) {
+      showToast({
+        type: 'error',
+        title: 'Seeding Error',
+        message: err.message || 'Failed to seed database.',
+      });
+    } finally {
+      setIsSeeding(false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -171,6 +194,18 @@ export function StaffLoginPage() {
                   <span className="text-[10px] text-salon-600 font-normal group-hover:underline">Fill</span>
                 </div>
                 <div className="text-[10px] text-stone-500 font-mono truncate">priya@salon.com</div>
+              </button>
+            </div>
+
+            <div className="mt-3 text-center">
+              <button
+                type="button"
+                onClick={handleSeedDatabase}
+                disabled={isSeeding}
+                className="text-[11px] text-salon-800 hover:text-salon-950 font-semibold inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-salon-300 bg-salon-50 hover:bg-salon-100 transition-all cursor-pointer shadow-xs disabled:opacity-50"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
+                {isSeeding ? 'Initializing Database & Services...' : '🌱 First Time? Initialize Database & Services'}
               </button>
             </div>
           </div>
