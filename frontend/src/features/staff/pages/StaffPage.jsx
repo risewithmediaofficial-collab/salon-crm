@@ -7,25 +7,28 @@ import Avatar from '../../../components/common/Avatar.jsx';
 import Badge from '../../../components/common/Badge.jsx';
 import Skeleton from '../../../components/common/Skeleton.jsx';
 import EmptyState from '../../../components/common/EmptyState.jsx';
-import { Sparkles, Calendar, Award } from 'lucide-react';
+import { Sparkles, Calendar, Award, Star, MessageSquare } from 'lucide-react';
+import StaffReviewsModal from '../components/StaffReviewsModal.jsx';
 
 export function StaffPage() {
   const navigate = useNavigate();
   const [staffList, setStaffList] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedStaffForReviews, setSelectedStaffForReviews] = useState(null);
+
+  const loadStaff = async () => {
+    setIsLoading(true);
+    try {
+      const res = await staffService.getAll({ activeOnly: 'true' });
+      setStaffList(res.data || []);
+    } catch (err) {
+      console.error('Failed to load staff list:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    async function loadStaff() {
-      setIsLoading(true);
-      try {
-        const res = await staffService.getAll({ activeOnly: 'true' });
-        setStaffList(res.data || []);
-      } catch (err) {
-        console.error('Failed to load staff list:', err);
-      } finally {
-        setIsLoading(false);
-      }
-    }
     loadStaff();
   }, []);
 
@@ -79,20 +82,38 @@ export function StaffPage() {
               hover
             >
               <div>
-                <div className="flex items-center gap-4 mb-4">
+                <div className="flex items-center gap-4 mb-3">
                   <Avatar
                     src={stylist.avatarUrl}
                     name={stylist.name}
                     size="lg"
-                    className="group-hover:scale-105 transition-transform"
+                    className="group-hover:scale-105 transition-transform shrink-0"
                   />
-                  <div>
-                    <h3 className="text-base font-display font-bold text-stone-900 group-hover:text-salon-800 transition-colors">
+                  <div className="min-w-0">
+                    <h3 className="text-base font-display font-bold text-stone-900 group-hover:text-salon-800 transition-colors truncate">
                       {stylist.name}
                     </h3>
-                    <div className="flex items-center gap-1.5 text-xs text-salon-600 font-medium mt-0.5">
-                      <Award className="w-3.5 h-3.5" />
-                      <span>{stylist.services?.length || 0} Specialities</span>
+                    <div className="flex items-center gap-2 mt-1">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedStaffForReviews(stylist);
+                        }}
+                        className="inline-flex items-center gap-1 font-bold text-xs text-amber-800 bg-amber-50 hover:bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200 transition-colors cursor-pointer"
+                        title="Click to view client feedback & reviews"
+                      >
+                        <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500 shrink-0" />
+                        <span>{Number(stylist.rating || 5.0).toFixed(1)}</span>
+                        <span className="text-[10px] font-normal text-stone-500">
+                          ({stylist.reviewCount || 0})
+                        </span>
+                      </button>
+
+                      <div className="flex items-center gap-1 text-[11px] text-salon-600 font-medium">
+                        <Award className="w-3.5 h-3.5 shrink-0" />
+                        <span>{stylist.services?.length || 0} Specialities</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -122,19 +143,38 @@ export function StaffPage() {
                 )}
               </div>
 
-              <Button
-                variant="primary"
-                size="sm"
-                className="w-full shadow-sm"
-                icon={Calendar}
-                onClick={() => handleBookWithStaff(stylist._id)}
-              >
-                Book with {stylist.name.split(' ')[0]}
-              </Button>
+              <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-stone-100">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  icon={Star}
+                  onClick={() => setSelectedStaffForReviews(stylist)}
+                  className="text-stone-700 hover:text-amber-700 hover:border-amber-300"
+                >
+                  Reviews ({stylist.reviewCount || 0})
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  className="shadow-sm"
+                  icon={Calendar}
+                  onClick={() => handleBookWithStaff(stylist._id)}
+                >
+                  Book Stylist
+                </Button>
+              </div>
             </Card>
           ))}
         </div>
       )}
+
+      {/* Staff Reviews Modal */}
+      <StaffReviewsModal
+        staff={selectedStaffForReviews}
+        isOpen={Boolean(selectedStaffForReviews)}
+        onClose={() => setSelectedStaffForReviews(null)}
+        onReviewAdded={loadStaff}
+      />
     </div>
   );
 }

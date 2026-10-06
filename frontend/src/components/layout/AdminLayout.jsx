@@ -40,7 +40,7 @@ export function AdminLayout() {
   const setSidebarOpen = useUIStore((state) => state.setSidebarOpen);
 
   // Live notification count — shared between sidebar badge + bell icon
-  const { unreadCount, notifications, markAsRead, markAllRead } = useNotificationPoller();
+  const { unreadCount, notifications, markAsRead, markAllRead, deleteNotification, clearAllNotifications } = useNotificationPoller();
 
   // Authorization guard
   if (!role || !['OWNER', 'MANAGER', 'STAFF'].includes(role)) {
@@ -304,6 +304,8 @@ export function AdminLayout() {
               sharedNotifications={notifications}
               sharedMarkAsRead={markAsRead}
               sharedMarkAllRead={markAllRead}
+              sharedDeleteNotification={deleteNotification}
+              sharedClearAll={clearAllNotifications}
             />
 
             <div className="flex items-center gap-2 pl-2 sm:pl-3 border-l border-stone-200">

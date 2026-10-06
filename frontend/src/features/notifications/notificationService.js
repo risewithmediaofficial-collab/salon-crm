@@ -9,6 +9,12 @@ export const notificationService = {
 
   markAllRead: () =>
     apiClient.patch('/notifications/read-all'),
+
+  delete: (id) =>
+    apiClient.delete(`/notifications/${id}`),
+
+  clearAll: () =>
+    apiClient.delete('/notifications/clear-all'),
 };
 
 export default notificationService;

@@ -13,6 +13,8 @@ export function useNotificationPoller() {
   const fetchNotifications = useNotificationStore((state) => state.fetchNotifications);
   const markAsRead = useNotificationStore((state) => state.markAsRead);
   const markAllRead = useNotificationStore((state) => state.markAllRead);
+  const deleteNotification = useNotificationStore((state) => state.deleteNotification);
+  const clearAllNotifications = useNotificationStore((state) => state.clearAllNotifications);
 
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
@@ -68,6 +70,20 @@ export function useNotificationPoller() {
               ),
               unreadCount: Math.max(0, state.unreadCount - 1),
             }));
+          } else if (e.data?.type === 'DELETE_NOTIFICATION' && e.data.id) {
+            useNotificationStore.setState((state) => {
+              const target = state.notifications.find((n) => n._id === e.data.id);
+              const wasUnread = target && !target.isRead;
+              return {
+                notifications: state.notifications.filter((n) => n._id !== e.data.id),
+                unreadCount: wasUnread ? Math.max(0, state.unreadCount - 1) : state.unreadCount,
+              };
+            });
+          } else if (e.data?.type === 'CLEAR_ALL') {
+            useNotificationStore.setState({
+              notifications: [],
+              unreadCount: 0,
+            });
           }
         };
       }
@@ -119,6 +135,8 @@ export function useNotificationPoller() {
     isLoading,
     markAsRead,
     markAllRead,
+    deleteNotification,
+    clearAllNotifications,
     refetch: fetchNotifications,
   };
 }

@@ -6,7 +6,8 @@ import Staff from '../models/Staff.js';
 import Service from '../models/Service.js';
 import Offer from '../models/Offer.js';
 import Customer from '../models/Customer.js';
-import { ROLES, SERVICE_CATEGORY, OFFER_TYPE } from '../constants/index.js';
+import Appointment from '../models/Appointment.js';
+import { ROLES, SERVICE_CATEGORY, OFFER_TYPE, APPOINTMENT_STATUS } from '../constants/index.js';
 import logger from '../utils/logger.js';
 
 async function seed() {
@@ -212,18 +213,83 @@ async function seed() {
       }
     }
 
-    // 5. Seed Demo Customer
-    const demoCustomerPhone = '9876543210';
-    let demoCustomer = await Customer.findOne({ phone: demoCustomerPhone });
-    if (!demoCustomer) {
-      demoCustomer = await Customer.create({
-        name: 'Sunita Rao',
-        phone: demoCustomerPhone,
-        email: 'sunita.rao@example.com',
-        gender: 'FEMALE',
-        isActive: true,
+    // 5. Seed Demo Customers
+    const demoCustomers = [
+      { name: 'Sunita Rao', phone: '9876543210', email: 'sunita.rao@example.com', gender: 'FEMALE' },
+      { name: 'Meera Kapoor', phone: '9876543211', email: 'meera.k@example.com', gender: 'FEMALE' },
+      { name: 'Rajesh Khanna', phone: '9876543212', email: 'rajesh.k@example.com', gender: 'MALE' },
+    ];
+
+    const customerDocs = [];
+    for (const c of demoCustomers) {
+      let cust = await Customer.findOne({ phone: c.phone });
+      if (!cust) {
+        cust = await Customer.create({ ...c, isActive: true });
+        logger.info(`Seeded customer: ${c.name}`);
+      }
+      customerDocs.push(cust);
+    }
+
+    // 6. Seed Sample Staff Reviews
+    const staffListDocs = await Staff.find().populate('services');
+    for (const st of staffListDocs) {
+      const existingReviews = await Appointment.countDocuments({
+        staff: st._id,
+        'review.rating': { $exists: true, $ne: null },
       });
-      logger.info('Seeded demo customer: Sunita Rao (9876543210)');
+
+      if (existingReviews === 0 && st.services?.length > 0) {
+        const svc1 = st.services[0];
+        const svc2 = st.services[1] || st.services[0];
+
+        let comments = [
+          {
+            rating: 5,
+            comment: `Absolutely loved my service with ${st.name}! Attention to detail and professionalism were top notch. Will definitely book again.`,
+            customer: customerDocs[0],
+            service: svc1,
+          },
+          {
+            rating: 5,
+            comment: `Masterful technique and very courteous behavior. My hair and styling feel wonderful. Highly recommended specialist!`,
+            customer: customerDocs[1],
+            service: svc2,
+          },
+          {
+            rating: 4,
+            comment: `Great pampering session with ${st.name.split(' ')[0]}. Very relaxing and knowledgeable advice on home hair care.`,
+            customer: customerDocs[2],
+            service: svc1,
+          },
+        ];
+
+        for (let i = 0; i < comments.length; i++) {
+          const item = comments[i];
+          const pastDate = new Date(Date.now() - (i + 1) * 3 * 24 * 60 * 60 * 1000);
+          await Appointment.create({
+            customer: item.customer._id,
+            staff: st._id,
+            service: item.service._id,
+            appointmentDate: pastDate,
+            startTime: pastDate,
+            endTime: new Date(pastDate.getTime() + 45 * 60 * 1000),
+            status: APPOINTMENT_STATUS.COMPLETED,
+            billingSnapshot: {
+              serviceName: item.service.name,
+              servicePrice: item.service.price || 800,
+              taxRate: 0.18,
+              taxAmount: (item.service.price || 800) * 0.18,
+              totalAmount: (item.service.price || 800) * 1.18,
+            },
+            review: {
+              rating: item.rating,
+              comment: item.comment,
+              submittedAt: new Date(pastDate.getTime() + 60 * 60 * 1000),
+            },
+          });
+        }
+        logger.info(`Seeded sample reviews for stylist ${st.name}`);
+      }
     }
 
     logger.info('✅ Seeding completed successfully!');

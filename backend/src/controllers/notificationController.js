@@ -34,3 +34,21 @@ export async function markAllRead(req, res, next) {
     next(err);
   }
 }
+
+export async function deleteNotification(req, res, next) {
+  try {
+    await notificationService.deleteNotification(req.params.id, req.user.id);
+    return successResponse(res, { message: 'Notification deleted successfully' });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function clearAll(req, res, next) {
+  try {
+    await notificationService.clearAllNotifications(req.user.id);
+    return successResponse(res, { message: 'All notifications cleared successfully' });
+  } catch (err) {
+    next(err);
+  }
+}

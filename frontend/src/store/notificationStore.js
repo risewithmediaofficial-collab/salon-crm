@@ -139,6 +139,61 @@ export const useNotificationStore = create((set, get) => ({
   },
 
   /**
+   * Delete an individual notification
+   */
+  deleteNotification: (id) => {
+    const { notifications, unreadCount } = get();
+    const target = notifications.find((n) => n._id === id);
+    if (!target) return;
+    const wasUnread = !target.isRead;
+
+    // 1. Instant optimistic state update
+    set({
+      notifications: notifications.filter((n) => n._id !== id),
+      unreadCount: wasUnread ? Math.max(0, unreadCount - 1) : unreadCount,
+    });
+
+    // 2. Cross-tab sync
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        const bc = new BroadcastChannel('salon_notification_read_sync');
+        bc.postMessage({ type: 'DELETE_NOTIFICATION', id });
+        bc.close();
+      }
+    } catch (e) {}
+
+    // 3. Fire backend API
+    notificationService.delete(id).catch((err) => {
+      console.error('Failed to delete notification on backend:', err);
+    });
+  },
+
+  /**
+   * Clear all notifications at once
+   */
+  clearAllNotifications: () => {
+    // 1. Instant optimistic state update
+    set({
+      notifications: [],
+      unreadCount: 0,
+    });
+
+    // 2. Cross-tab sync
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        const bc = new BroadcastChannel('salon_notification_read_sync');
+        bc.postMessage({ type: 'CLEAR_ALL' });
+        bc.close();
+      }
+    } catch (e) {}
+
+    // 3. Fire backend API
+    notificationService.clearAll().catch((err) => {
+      console.error('Failed to clear all notifications on backend:', err);
+    });
+  },
+
+  /**
    * Reset on logout or profile switch
    */
   reset: () => {

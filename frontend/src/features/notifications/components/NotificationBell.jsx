@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, Check, Calendar, Volume2, X, BellRing, CheckCheck } from 'lucide-react';
+import { Bell, Check, Calendar, Volume2, X, BellRing, CheckCheck, Trash2 } from 'lucide-react';
 import useNotificationPoller from '../useNotificationPoller.js';
 import { playNotificationChime } from '../notificationAudio.js';
 import useAuthStore from '../../../store/authStore.js';
@@ -10,6 +10,8 @@ export function NotificationBell({
   sharedNotifications,
   sharedMarkAsRead,
   sharedMarkAllRead,
+  sharedDeleteNotification,
+  sharedClearAll,
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [showBanner, setShowBanner] = useState(false);
@@ -26,6 +28,8 @@ export function NotificationBell({
   const notifications = sharedNotifications !== undefined ? sharedNotifications : poller.notifications;
   const markAsRead    = sharedMarkAsRead    !== undefined ? sharedMarkAsRead    : poller.markAsRead;
   const markAllRead   = sharedMarkAllRead   !== undefined ? sharedMarkAllRead   : poller.markAllRead;
+  const deleteNotification = sharedDeleteNotification !== undefined ? sharedDeleteNotification : poller.deleteNotification;
+  const clearAllNotifications = sharedClearAll !== undefined ? sharedClearAll : poller.clearAllNotifications;
 
   // Show a sticky top banner whenever new unread arrive
   const prevUnreadRef = useRef(unreadCount);
@@ -90,6 +94,16 @@ export function NotificationBell({
   const handleItemCheck = (e, notification) => {
     e.stopPropagation();
     markAsRead(notification._id);
+  };
+
+  const handleDeleteItem = (e, id) => {
+    e.stopPropagation();
+    deleteNotification(id);
+  };
+
+  const handleClearAll = (e) => {
+    e.stopPropagation();
+    clearAllNotifications();
   };
 
   const formatTimeAgo = (dateStr) => {
@@ -210,9 +224,22 @@ export function NotificationBell({
                     type="button"
                     onClick={() => markAllRead()}
                     className="text-[10px] text-salon-700 hover:text-salon-900 font-semibold p-1 rounded hover:bg-salon-50 transition-colors flex items-center gap-1"
+                    title="Mark all as read"
                   >
                     <CheckCheck className="w-3.5 h-3.5" />
-                    <span>Mark all read</span>
+                    <span className="hidden sm:inline">Mark read</span>
+                  </button>
+                )}
+
+                {notifications.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleClearAll}
+                    className="text-[10px] text-rose-600 hover:text-rose-800 font-semibold p-1 rounded hover:bg-rose-50 transition-colors flex items-center gap-1"
+                    title="Clear all notifications"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Clear all</span>
                   </button>
                 )}
               </div>
@@ -235,7 +262,7 @@ export function NotificationBell({
                   <div
                     key={n._id}
                     onClick={() => handleItemClick(n)}
-                    className={`p-3.5 flex items-start gap-3 cursor-pointer transition-colors ${
+                    className={`p-3.5 flex items-start gap-3 cursor-pointer transition-colors group ${
                       n.isRead ? 'hover:bg-stone-50/80 bg-white' : 'bg-amber-50/40 hover:bg-amber-50/70 border-l-2 border-l-amber-500'
                     }`}
                   >
@@ -268,19 +295,29 @@ export function NotificationBell({
                       </p>
                     </div>
 
-                    {/* Action on single item: mark read button / unread dot */}
-                    {!n.isRead ? (
+                    {/* Action on single item: mark read button + delete button */}
+                    <div className="flex items-center gap-1 shrink-0 ml-1">
+                      {!n.isRead && (
+                        <button
+                          type="button"
+                          onClick={(e) => handleItemCheck(e, n)}
+                          className="p-1 rounded-lg text-amber-600 hover:text-emerald-700 hover:bg-emerald-50 transition-colors"
+                          title="Mark as read"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+
                       <button
                         type="button"
-                        onClick={(e) => handleItemCheck(e, n)}
-                        className="p-1 rounded-lg text-amber-600 hover:text-emerald-700 hover:bg-emerald-50 transition-colors shrink-0"
-                        title="Mark as read"
+                        onClick={(e) => handleDeleteItem(e, n._id)}
+                        className="p-1 rounded-lg text-stone-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                        title="Delete notification"
+                        aria-label="Delete notification"
                       >
-                        <Check className="w-3.5 h-3.5" />
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
-                    ) : (
-                      <span className="w-1.5 h-1.5 rounded-full bg-stone-300 shrink-0 mt-2" />
-                    )}
+                    </div>
                   </div>
                 ))
               )}

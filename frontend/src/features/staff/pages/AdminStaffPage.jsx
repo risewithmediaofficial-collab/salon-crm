@@ -13,7 +13,8 @@ import Select from '../../../components/common/Select.jsx';
 import Textarea from '../../../components/common/Textarea.jsx';
 import Skeleton from '../../../components/common/Skeleton.jsx';
 import ConfirmDialog from '../../../components/common/ConfirmDialog.jsx';
-import { UserPlus, Calendar, Plus, Clock, Trash2, CalendarOff } from 'lucide-react';
+import { UserPlus, Calendar, Plus, Clock, Trash2, CalendarOff, Star } from 'lucide-react';
+import StaffReviewsModal from '../components/StaffReviewsModal.jsx';
 
 export function AdminStaffPage() {
   const showToast = useUIStore((state) => state.showToast);
@@ -45,6 +46,9 @@ export function AdminStaffPage() {
   // Deactivate
   const [deactivatingStaff, setDeactivatingStaff] = useState(null);
   const [isDeactivating, setIsDeactivating] = useState(false);
+
+  // Review Inspection Modal
+  const [reviewModalStaff, setReviewModalStaff] = useState(null);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -198,7 +202,7 @@ export function AdminStaffPage() {
         </div>
       ) : (
         <div className="bg-white rounded-2xl border border-stone-200 shadow-soft overflow-hidden">
-          <Table headers={['Staff Member', 'Role & Contact', 'Services Handled', 'Active Leaves', 'Status', 'Actions']}>
+          <Table headers={['Staff Member', 'Role & Contact', 'Services Handled', 'Rating & Reviews', 'Active Leaves', 'Status', 'Actions']}>
             {staffList.map((st) => (
               <tr key={st._id} className="hover:bg-stone-50/50 transition-colors">
                 <td className="px-5 py-3.5 text-xs font-bold text-stone-900">
@@ -232,6 +236,21 @@ export function AdminStaffPage() {
                 </td>
 
                 <td className="px-5 py-3.5 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setReviewModalStaff(st)}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-200 transition-colors cursor-pointer group"
+                    title="View client testimonials and reviews"
+                  >
+                    <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500 group-hover:scale-110 transition-transform" />
+                    <span>{Number(st.rating || 5.0).toFixed(1)}</span>
+                    <span className="text-[10px] font-normal text-stone-500">
+                      ({st.reviewCount || 0})
+                    </span>
+                  </button>
+                </td>
+
+                <td className="px-5 py-3.5 text-xs">
                   {st.leaves?.length > 0 ? (
                     <span className="inline-flex items-center gap-1 text-[11px] text-amber-700 font-semibold bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
                       <CalendarOff className="w-3 h-3" />
@@ -260,10 +279,20 @@ export function AdminStaffPage() {
                       variant="secondary"
                       size="sm"
                       className="text-xs px-2.5 py-1"
+                      icon={Star}
+                      onClick={() => setReviewModalStaff(st)}
+                    >
+                      Reviews
+                    </Button>
+
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="text-xs px-2.5 py-1"
                       icon={Calendar}
                       onClick={() => setLeaveModalStaff(st)}
                     >
-                      Schedule Leave
+                      Leave
                     </Button>
 
                     {st.isActive && (
@@ -449,6 +478,14 @@ export function AdminStaffPage() {
         message={`Are you sure you want to deactivate ${deactivatingStaff?.name}? Their login will be disabled and they will not appear on customer booking.`}
         confirmLabel="Deactivate"
         isLoading={isDeactivating}
+      />
+
+      {/* Staff Review Inspection Modal */}
+      <StaffReviewsModal
+        staff={reviewModalStaff}
+        isOpen={Boolean(reviewModalStaff)}
+        onClose={() => setReviewModalStaff(null)}
+        onReviewAdded={loadData}
       />
     </div>
   );

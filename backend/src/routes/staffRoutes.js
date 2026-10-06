@@ -10,9 +10,11 @@ import {
 
 const router = Router();
 
-// Staff list is viewable by customers to choose a preferred staff
+// Staff list and reviews viewable by customers and admins
 router.get('/', staffController.getAll);
 router.get('/:id', staffController.getById);
+router.get('/:id/reviews', staffController.getReviews);
+router.post('/:id/reviews', authenticate, staffController.addReview);
 
 // Admin-only management endpoints
 router.post('/', authenticate, adminOnly, createStaffValidator, validate, staffController.create);

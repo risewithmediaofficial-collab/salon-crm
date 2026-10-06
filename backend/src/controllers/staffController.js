@@ -78,3 +78,30 @@ export async function remove(req, res, next) {
     next(err);
   }
 }
+
+export async function getReviews(req, res, next) {
+  try {
+    const data = await staffService.getStaffReviews(req.params.id);
+    return successResponse(res, { data });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function addReview(req, res, next) {
+  try {
+    const { rating, comment, serviceId } = req.body;
+    const appointment = await staffService.addStaffReview(req.params.id, {
+      customerId: req.user.id,
+      rating: Number(rating),
+      comment: comment?.trim(),
+      serviceId,
+    });
+    return successResponse(res, {
+      message: 'Review submitted successfully',
+      data: appointment,
+    });
+  } catch (err) {
+    next(err);
+  }
+}

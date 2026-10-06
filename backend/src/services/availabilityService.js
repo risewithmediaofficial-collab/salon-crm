@@ -129,11 +129,11 @@ export async function getAvailableSlots({ staffId, serviceId, serviceIds, date, 
     throw new NotFoundError('Service');
   }
 
-  // Check staff can perform all selected services
+  // Check staff can perform at least one of the selected services
   const staffServicesSet = new Set((staff.services || []).map((s) => String(s)));
-  const canPerformAll = ids.every((id) => staffServicesSet.has(String(id)));
-  if (!canPerformAll) {
-    throw new AppError('This staff member does not perform all selected services', 400, 'STAFF_SERVICE_MISMATCH');
+  const canPerform = ids.some((id) => staffServicesSet.has(String(id)));
+  if (!canPerform) {
+    throw new AppError('This staff member does not perform any of the selected services', 400, 'STAFF_SERVICE_MISMATCH');
   }
 
   // Check leave
@@ -288,10 +288,10 @@ export async function validateAndPrepareBooking({ staffId, serviceId, serviceIds
   if (!staff || !staff.isActive) throw new NotFoundError('Staff member');
   if (!serviceDocs || serviceDocs.length === 0) throw new AppError('The selected service is not currently available', 400, 'SERVICE_INACTIVE');
 
-  // Check staff can perform all services
+  // Check staff can perform at least one of the selected services
   const staffServicesSet = new Set((staff.services || []).map((s) => String(s)));
-  const canPerformAll = ids.every((id) => staffServicesSet.has(String(id)));
-  if (!canPerformAll) throw new AppError('This staff member does not perform all selected services', 400, 'STAFF_SERVICE_MISMATCH');
+  const canPerform = ids.some((id) => staffServicesSet.has(String(id)));
+  if (!canPerform) throw new AppError('This staff member does not perform any of the selected services', 400, 'STAFF_SERVICE_MISMATCH');
 
   // Check leave
   if (isStaffOnLeave(staff.leaves, date)) {

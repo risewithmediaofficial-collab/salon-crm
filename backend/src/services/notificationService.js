@@ -183,3 +183,11 @@ export async function markAllAsRead(recipientId) {
   );
 }
 
+export async function deleteNotification(notificationId, recipientId) {
+  return Notification.findOneAndDelete({ _id: notificationId, recipient: recipientId });
+}
+
+export async function clearAllNotifications(recipientId) {
+  return Notification.deleteMany({ recipient: recipientId });
+}
+

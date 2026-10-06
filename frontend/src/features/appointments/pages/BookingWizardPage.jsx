@@ -30,7 +30,9 @@ import {
   X,
   Plus,
   Lock,
+  Star,
 } from 'lucide-react';
+import StaffReviewsModal from '../../staff/components/StaffReviewsModal.jsx';
 import {
   formatCurrency,
   formatDuration,
@@ -121,6 +123,7 @@ export function BookingWizardPage() {
   // Booking completion state
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [confirmedBooking, setConfirmedBooking] = useState(null);
+  const [inspectingStaffReviews, setInspectingStaffReviews] = useState(null);
 
   // Computed summary of selected services
   const totalSelectedDuration = useMemo(() => {
@@ -266,15 +269,34 @@ export function BookingWizardPage() {
     navigate(`/book?${newParams.toString()}`, { replace: true });
   };
 
-  // Filter staff who can perform ALL selected services
-  const eligibleStaff = useMemo(() => {
-    if (selectedServices.length === 0) return staffList;
-    return staffList.filter((st) => {
+  // Filter staff who can perform selected services
+  // If no single staff performs all (e.g. multi-service across hair & skin),
+  // show all available specialists who perform the selected treatments!
+  const { eligibleStaff, hasFullMatch } = useMemo(() => {
+    if (selectedServices.length === 0) {
+      return { eligibleStaff: staffList, hasFullMatch: true };
+    }
+
+    const fullMatch = staffList.filter((st) => {
       const staffServiceIds = new Set(
         (st.services || []).map((s) => String(typeof s === 'string' ? s : s?._id))
       );
       return selectedServices.every((svc) => staffServiceIds.has(String(svc._id)));
     });
+
+    if (fullMatch.length > 0) {
+      return { eligibleStaff: fullMatch, hasFullMatch: true };
+    }
+
+    // Multi-specialty booking: show all specialists who perform ANY of the selected services
+    const partialMatch = staffList.filter((st) => {
+      const staffServiceIds = new Set(
+        (st.services || []).map((s) => String(typeof s === 'string' ? s : s?._id))
+      );
+      return selectedServices.some((svc) => staffServiceIds.has(String(svc._id)));
+    });
+
+    return { eligibleStaff: partialMatch, hasFullMatch: false };
   }, [selectedServices, staffList]);
 
   // Load available slots whenever staff, services, or date changes and we are at step 4 or 5
@@ -786,12 +808,27 @@ export function BookingWizardPage() {
             </button>
           </div>
 
+          {/* Multi-Department Specialists Banner */}
+          {!hasFullMatch && eligibleStaff.length > 0 && (
+            <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-amber-50/90 via-salon-50/60 to-stone-50 border border-amber-200/90 flex items-start gap-3.5 shadow-2xs">
+              <Sparkles className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
+              <div>
+                <h4 className="text-xs font-bold text-amber-950 uppercase tracking-wide">
+                  Multi-Department Specialists ({eligibleStaff.length} Available)
+                </h4>
+                <p className="text-xs text-amber-900/90 mt-0.5 leading-relaxed">
+                  Your selected treatments span multiple departments. We have matched the <strong>{eligibleStaff.length} available specialists</strong> who perform these services. Select your preferred specialist to schedule and lead your visit.
+                </p>
+              </div>
+            </div>
+          )}
+
           {eligibleStaff.length === 0 ? (
             <div className="p-8 rounded-2xl bg-amber-50/80 border border-amber-200 text-center max-w-lg mx-auto mb-8 shadow-xs">
               <AlertCircle className="w-9 h-9 text-amber-600 mx-auto mb-3" />
               <h4 className="text-base font-bold text-amber-950 mb-1">No Matching Specialist Found</h4>
               <p className="text-xs text-amber-800 leading-relaxed mb-5">
-                None of our stylists perform all {selectedServices.length} selected treatments together in a single session. Please adjust your treatment selection or book them as separate appointments.
+                None of our stylists are currently available for the selected treatments. Please adjust your treatment selection or contact salon reception.
               </p>
               <Button variant="primary" size="sm" onClick={() => setCurrentStep(1)}>
                 Change Selected Treatments
@@ -801,23 +838,93 @@ export function BookingWizardPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
               {eligibleStaff.map((staff) => {
                 const isSelected = selectedStaff?._id === staff._id;
+                const staffServiceIds = new Set(
+                  (staff.services || []).map((s) => String(typeof s === 'string' ? s : s?._id))
+                );
+                const matchedServices = selectedServices.filter((svc) =>
+                  staffServiceIds.has(String(svc._id))
+                );
+                const performsAll =
+                  selectedServices.length > 0 && matchedServices.length === selectedServices.length;
+
                 return (
                   <div
                     key={staff._id}
                     onClick={() => setSelectedStaff(staff)}
-                    className={`p-5 rounded-2xl border transition-all duration-200 cursor-pointer flex items-center gap-4 ${
+                    className={`p-5 rounded-2xl border transition-all duration-200 cursor-pointer flex items-start gap-4 ${
                       isSelected
                         ? 'border-salon-800 bg-salon-50/70 ring-2 ring-salon-800/20 shadow-md'
                         : 'border-stone-200 bg-white hover:border-salon-300 shadow-2xs'
                     }`}
                   >
-                    <Avatar src={staff.avatarUrl} name={staff.name} size="lg" />
+                    <Avatar src={staff.avatarUrl} name={staff.name} size="lg" className="shrink-0 mt-0.5" />
 
                     <div className="flex-1 min-w-0">
-                      <h4 className="text-base font-display font-bold text-stone-900 mb-0.5 truncate">
-                        {staff.name}
-                      </h4>
+                      <div className="flex items-start justify-between gap-2 mb-1">
+                        <h4 className="text-base font-display font-bold text-stone-900 truncate">
+                          {staff.name}
+                        </h4>
+                        {performsAll ? (
+                          <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                            100% Match
+                          </span>
+                        ) : (
+                          <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-semibold text-salon-800 bg-salon-50 px-2 py-0.5 rounded-full border border-salon-200">
+                            Performs {matchedServices.length}/{selectedServices.length} Treatments
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2 mb-2">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setInspectingStaffReviews(staff);
+                          }}
+                          className="inline-flex items-center gap-1 font-bold text-xs text-amber-900 bg-amber-50 hover:bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200 transition-colors cursor-pointer"
+                          title="View customer feedback and ratings"
+                        >
+                          <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500 shrink-0" />
+                          <span>{Number(staff.rating || 5.0).toFixed(1)}</span>
+                          <span className="text-[10px] font-normal text-stone-500">
+                            ({staff.reviewCount || 0})
+                          </span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setInspectingStaffReviews(staff);
+                          }}
+                          className="text-[11px] text-salon-700 hover:text-salon-950 font-semibold underline underline-offset-2 cursor-pointer"
+                        >
+                          Reviews &rarr;
+                        </button>
+                      </div>
+
                       <p className="text-xs text-stone-500 line-clamp-2 mb-2">{staff.bio}</p>
+
+                      {/* Display which selected treatments this staff performs */}
+                      {matchedServices.length > 0 && (
+                        <div className="mb-3">
+                          <span className="text-[10px] font-semibold uppercase tracking-wider text-stone-400 block mb-1">
+                            Services Handled:
+                          </span>
+                          <div className="flex flex-wrap gap-1">
+                            {matchedServices.map((svc) => (
+                              <span
+                                key={svc._id}
+                                className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded bg-stone-100 text-stone-700 border border-stone-200/60"
+                              >
+                                ✓ {svc.name}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
                       <span
                         className={`inline-flex items-center gap-1 text-[11px] font-sans font-semibold px-2.5 py-1 rounded-lg ${
                           isSelected ? 'bg-salon-800 text-white shadow-xs' : 'bg-stone-100 text-stone-600'
@@ -826,7 +933,7 @@ export function BookingWizardPage() {
                         {isSelected ? (
                           <>
                             <Check className="w-3 h-3" />
-                            Selected
+                            Selected Specialist
                           </>
                         ) : (
                           'Choose Specialist'
@@ -1407,6 +1514,13 @@ export function BookingWizardPage() {
           </div>
         </Card>
       )}
+
+      {/* Stylist Reviews Inspection Modal */}
+      <StaffReviewsModal
+        staff={inspectingStaffReviews}
+        isOpen={Boolean(inspectingStaffReviews)}
+        onClose={() => setInspectingStaffReviews(null)}
+      />
     </div>
   );
 }

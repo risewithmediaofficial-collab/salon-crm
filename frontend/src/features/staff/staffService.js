@@ -8,6 +8,8 @@ export const staffService = {
   addLeave: (id, data) => apiClient.post(`/staff/${id}/leaves`, data),
   removeLeave: (id, leaveId) => apiClient.delete(`/staff/${id}/leaves/${leaveId}`),
   delete: (id) => apiClient.delete(`/staff/${id}`),
+  getReviews: (id) => apiClient.get(`/staff/${id}/reviews`),
+  submitReview: (id, data) => apiClient.post(`/staff/${id}/reviews`, data),
 };
 
 export default staffService;
