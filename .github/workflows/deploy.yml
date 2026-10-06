@@ -107,11 +107,12 @@ jobs:
             echo "   • Backend:  :$BACKEND_PORT"
             echo "   • MongoDB:  :$MONGO_PORT"
 
-            docker compose up -d --build --force-recreate --remove-orphans
+            docker compose build --no-cache backend frontend
+            docker compose up -d --force-recreate --remove-orphans
 
             # Seed database with initial admin, staff, services, and categories
             echo "🌱 Ensuring database is seeded with services and admin credentials..."
-            sleep 3
+            sleep 5
             docker compose exec -T backend node src/config/seed.js || true
 
             echo "🧹 Cleaning up unused Docker images..."
