@@ -6,9 +6,53 @@ on:
       - main
   workflow_dispatch:
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
+  # ────────────────────────────────────────────────────────────
+  # 1. Build and Publish Docker Images to GitHub Container Registry
+  # ────────────────────────────────────────────────────────────
+  build-and-push:
+    name: Build & Push Images to GHCR
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build & Push Backend Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: backend/Dockerfile
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/salon-crm-backend:latest
+
+      - name: Build & Push Frontend Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: frontend/Dockerfile
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/salon-crm-frontend:latest
+
+  # ────────────────────────────────────────────────────────────
+  # 2. Deploy to Remote Server via SSH
+  # ────────────────────────────────────────────────────────────
   deploy:
     name: Deploy to Production
+    needs: build-and-push
     runs-on: ubuntu-latest
 
     steps:
@@ -24,30 +68,42 @@ jobs:
           port: ${{ secrets.PORT || 22 }}
           timeout: 60s          # ← connection timeout
           command_timeout: 10m  # ← script execution timeout
-          envs: FRONTEND_PORT,BACKEND_PORT,DEPLOY_PATH
+          envs: FRONTEND_PORT,BACKEND_PORT,MONGO_PORT,DEPLOY_PATH
           script: |
-            # Deployment variables (can be overridden in GitHub Secrets/Vars or remote server .env)
+            # Deployment variables with configurable defaults
             DEPLOY_DIR="${DEPLOY_PATH:-/docker/billing}"
             export FRONTEND_PORT="${FRONTEND_PORT:-95}"
             export BACKEND_PORT="${BACKEND_PORT:-5012}"
+            export MONGO_PORT="${MONGO_PORT:-27022}"
 
             echo "🚀 Navigating to $DEPLOY_DIR..."
+            mkdir -p "$DEPLOY_DIR"
             cd "$DEPLOY_DIR" || { echo "Directory $DEPLOY_DIR not found"; exit 1; }
 
-            echo "📥 Pulling latest changes from main branch..."
-            git fetch origin main
-            git reset --hard origin/main
+            # If not yet a git repository, clone it; otherwise fetch and pull
+            if [ ! -d .git ]; then
+              echo "📥 Cloning repository into $DEPLOY_DIR..."
+              git clone https://github.com/risewithmediaofficial-collab/salon-crm.git .
+            else
+              echo "📥 Pulling latest changes from main branch..."
+              git fetch origin main
+              git reset --hard origin/main
+            fi
 
-            echo "⚙️ Checking for .env configuration file..."
+            # Ensure .env exists from template
             if [ ! -f .env ]; then
-              echo "Creating .env from .env.example..."
+              echo "⚙️ Creating .env from .env.example..."
               cp .env.example .env
             fi
 
-            echo "🐳 Building and launching Docker containers (Frontend: $FRONTEND_PORT, Backend: $BACKEND_PORT)..."
+            echo "🐳 Building and launching Docker containers..."
+            echo "   • Frontend: :$FRONTEND_PORT"
+            echo "   • Backend:  :$BACKEND_PORT"
+            echo "   • MongoDB:  :$MONGO_PORT"
+
             docker compose up -d --build --remove-orphans
 
             echo "🧹 Cleaning up unused Docker images..."
             docker image prune -f
 
-            echo "✅ Deployment finished successfully! Frontend running on :$FRONTEND_PORT and Backend on :$BACKEND_PORT"
+            echo "✅ Deployment completed successfully!"

@@ -9,7 +9,7 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
-    image: salon-crm-backend:latest
+    image: ${BACKEND_IMAGE:-ghcr.io/risewithmediaofficial-collab/salon-crm-backend:latest}
     container_name: ${BACKEND_CONTAINER_NAME:-salon-crm-backend}
     restart: unless-stopped
     ports:
@@ -47,7 +47,7 @@ services:
       args:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
         VITE_SALON_NAME: ${SALON_NAME:-Luxe Salon CRM}
-    image: salon-crm-frontend:latest
+    image: ${FRONTEND_IMAGE:-ghcr.io/risewithmediaofficial-collab/salon-crm-frontend:latest}
     container_name: ${FRONTEND_CONTAINER_NAME:-salon-crm-frontend}
     restart: unless-stopped
     ports:
@@ -68,7 +68,7 @@ services:
     container_name: ${MONGO_CONTAINER_NAME:-salon-crm-mongo}
     restart: unless-stopped
     ports:
-      - "${MONGO_PORT:-27017}:27017"
+      - "${MONGO_PORT:-27022}:27017"
     environment:
       MONGO_INITDB_DATABASE: ${MONGO_DB_NAME:-salon-crm}
     volumes:
