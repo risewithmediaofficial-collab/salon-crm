@@ -19,6 +19,11 @@ export const apiLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   handler: rateLimitHandler,
+  skip: (req) => {
+    // Background polling for notifications or health checks should not consume rate limit tokens
+    const p = req.baseUrl ? `${req.baseUrl}${req.path}` : req.path;
+    return req.method === 'GET' && (p.includes('/notifications') || p.includes('/health'));
+  },
 });
 
 /**

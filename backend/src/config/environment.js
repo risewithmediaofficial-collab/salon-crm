@@ -40,7 +40,7 @@ export const env = {
     .map((o) => o.trim()),
 
   RATE_LIMIT_WINDOW_MS: parseInt(getEnv('RATE_LIMIT_WINDOW_MS', '900000'), 10),
-  RATE_LIMIT_MAX: parseInt(getEnv('RATE_LIMIT_MAX', '100'), 10),
+  RATE_LIMIT_MAX: parseInt(getEnv('RATE_LIMIT_MAX', '5000'), 10),
 
   LOG_LEVEL: getEnv('LOG_LEVEL', 'info'),
   LOG_DIR: getEnv('LOG_DIR', 'logs'),

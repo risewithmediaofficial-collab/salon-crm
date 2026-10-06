@@ -29,16 +29,19 @@ export function useNotificationPoller() {
 
     activeSubscribers++;
 
-    // Single interval poller across all components
+    // Single interval poller across all components (polling every 30 seconds only when tab is visible)
     if (!pollerInterval) {
       pollerInterval = setInterval(() => {
+        if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
+          return; // Pause background polling if user is on another tab
+        }
         const token =
           localStorage.getItem('adminAccessToken') ||
           localStorage.getItem('accessToken') ||
           localStorage.getItem('customerAccessToken');
         if (!token) return;
         useNotificationStore.getState().fetchNotifications();
-      }, 5000);
+      }, 30000);
     }
 
     // Cross-tab BroadcastChannel for bookings
@@ -97,20 +100,13 @@ export function useNotificationPoller() {
     };
     window.addEventListener('storage', handleStorage);
 
-    // Same-window custom event
-    const handleCustomEvent = () => {
-      useNotificationStore.getState().fetchNotifications();
-    };
-    window.addEventListener('new-appointment-notification', handleCustomEvent);
-
-    // Visibility change / tab focus: refresh immediately when user returns to tab
+    // Visibility change / tab focus: refresh when user returns to tab
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
         useNotificationStore.getState().fetchNotifications();
       }
     };
     document.addEventListener('visibilitychange', handleVisibility);
-    window.addEventListener('focus', handleVisibility);
 
     return () => {
       activeSubscribers--;
@@ -123,9 +119,7 @@ export function useNotificationPoller() {
       if (syncChannel) syncChannel.close();
       if (readSyncChannel) readSyncChannel.close();
       window.removeEventListener('storage', handleStorage);
-      window.removeEventListener('new-appointment-notification', handleCustomEvent);
       document.removeEventListener('visibilitychange', handleVisibility);
-      window.removeEventListener('focus', handleVisibility);
     };
   }, [isAuthenticated, fetchNotifications]);
 

@@ -19,12 +19,19 @@ export const useNotificationStore = create((set, get) => ({
   /**
    * Fetch latest notifications from backend and detect newly arrived items
    */
-  fetchNotifications: async () => {
+  fetchNotifications: async (force = false) => {
     const token =
       localStorage.getItem('adminAccessToken') ||
       localStorage.getItem('accessToken') ||
       localStorage.getItem('customerAccessToken');
     if (!token) return;
+
+    // Throttle: prevent multiple requests within 10 seconds unless forced
+    const now = Date.now();
+    const last = get().lastFetchedAt;
+    if (!force && last && now - last < 10000) {
+      return;
+    }
 
     try {
       const res = await notificationService.getAll({ page: 1, limit: 20 });
@@ -54,10 +61,6 @@ export const useNotificationStore = create((set, get) => ({
           showDesktopNotification(
             topItem.title || 'New Notification',
             topItem.message || 'A new appointment update has been received.'
-          );
-
-          window.dispatchEvent(
-            new CustomEvent('new-appointment-notification', { detail: topItem })
           );
         }
       }

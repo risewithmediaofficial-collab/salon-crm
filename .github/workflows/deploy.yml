@@ -101,6 +101,7 @@ jobs:
             grep -q "^FRONTEND_PORT=" .env && sed -i "s/^FRONTEND_PORT=.*/FRONTEND_PORT=$FRONTEND_PORT/" .env || echo "FRONTEND_PORT=$FRONTEND_PORT" >> .env
             grep -q "^BACKEND_PORT=" .env && sed -i "s/^BACKEND_PORT=.*/BACKEND_PORT=$BACKEND_PORT/" .env || echo "BACKEND_PORT=$BACKEND_PORT" >> .env
             grep -q "^MONGO_PORT=" .env && sed -i "s/^MONGO_PORT=.*/MONGO_PORT=$MONGO_PORT/" .env || echo "MONGO_PORT=$MONGO_PORT" >> .env
+            grep -q "^RATE_LIMIT_MAX=" .env && sed -i "s/^RATE_LIMIT_MAX=.*/RATE_LIMIT_MAX=5000/" .env || echo "RATE_LIMIT_MAX=5000" >> .env
 
             echo "🐳 Building and launching Docker containers..."
             echo "   • Frontend: :$FRONTEND_PORT"
