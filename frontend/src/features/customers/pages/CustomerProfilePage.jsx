@@ -134,13 +134,11 @@ export function CustomerProfilePage() {
     const handleStorage = (e) => {
       if (e.key === 'salon_last_booking_event') loadOrders(true);
     };
-    window.addEventListener('storage', handleStorage);
-    window.addEventListener('new-appointment-notification', () => loadOrders(true));
-
-    // Silent background polling every 4 seconds
+    // Background polling every 45 seconds only when tab is visible
     const pollInterval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
       loadOrders(true);
-    }, 4000);
+    }, 45000);
 
     return () => {
       if (channel) channel.close();

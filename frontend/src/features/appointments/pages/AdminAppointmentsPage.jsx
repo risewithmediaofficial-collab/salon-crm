@@ -127,10 +127,7 @@ export function AdminAppointmentsPage() {
     };
     window.addEventListener('storage', handleStorageEvent);
 
-    // 3. Same-window custom event
-    window.addEventListener('new-appointment-notification', triggerSilentSync);
-
-    // 4. Tab visibility change & window focus (instant sync when admin returns to tab)
+    // 3. Tab visibility change & window focus (instant sync when admin returns to tab)
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         triggerSilentSync();
@@ -139,15 +136,15 @@ export function AdminAppointmentsPage() {
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', triggerSilentSync);
 
-    // 5. Silent background polling every 4 seconds to guarantee updates from other browsers/devices
+    // 4. Background polling every 30 seconds only when tab is visible
     const pollTimer = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
       triggerSilentSync();
-    }, 4000);
+    }, 30000);
 
     return () => {
       if (channel) channel.close();
       window.removeEventListener('storage', handleStorageEvent);
-      window.removeEventListener('new-appointment-notification', triggerSilentSync);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', triggerSilentSync);
       clearInterval(pollTimer);

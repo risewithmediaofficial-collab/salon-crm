@@ -92,25 +92,21 @@ export function MyAppointmentsPage() {
     };
     window.addEventListener('storage', handleStorage);
 
-    // Auto-poll every 4 seconds so status transitions (e.g. Accepted) reflect live
+    // Auto-poll every 30 seconds only when tab is visible
     const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
       loadAppointments(true);
-    }, 4000);
+    }, 30000);
 
-    // Also auto-refresh when customer switches back to this browser tab
+    // Auto-refresh when customer switches back to this browser tab
     const handleFocus = () => loadAppointments(true);
     window.addEventListener('focus', handleFocus);
-
-    // Also re-fetch immediately if a real-time status update notification arrives
-    const handleNotification = () => loadAppointments(true);
-    window.addEventListener('new-appointment-notification', handleNotification);
 
     return () => {
       if (channel) channel.close();
       window.removeEventListener('storage', handleStorage);
       clearInterval(interval);
       window.removeEventListener('focus', handleFocus);
-      window.removeEventListener('new-appointment-notification', handleNotification);
     };
   }, [user, navigate]);
 

@@ -75,22 +75,16 @@ export function CalendarPage() {
       if (e.key === 'salon_last_booking_event') triggerSilentSync();
     };
     window.addEventListener('storage', handleStorageEvent);
-    window.addEventListener('new-appointment-notification', triggerSilentSync);
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') triggerSilentSync();
-    };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', triggerSilentSync);
 
     const pollTimer = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
       triggerSilentSync();
-    }, 4000);
+    }, 30000);
 
     return () => {
       if (channel) channel.close();
       window.removeEventListener('storage', handleStorageEvent);
-      window.removeEventListener('new-appointment-notification', triggerSilentSync);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', triggerSilentSync);
       clearInterval(pollTimer);

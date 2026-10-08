@@ -314,6 +314,7 @@ export function BookingWizardPage() {
     }
 
     slotRefreshTimerRef.current = setInterval(async () => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
       if (isRefreshingRef.current) return;
       isRefreshingRef.current = true;
       try {
@@ -341,7 +342,7 @@ export function BookingWizardPage() {
         }
       } catch (_) {}
       isRefreshingRef.current = false;
-    }, 8000);
+    }, 25000);
 
     return () => {
       if (slotRefreshTimerRef.current) clearInterval(slotRefreshTimerRef.current);
